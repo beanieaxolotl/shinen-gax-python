@@ -82,34 +82,53 @@ def scan_ROM(rom):
 
 parser = argparse.ArgumentParser()
 parser.add_argument('file_path', help="Game Boy Advance .gba ROM file")
+parser.add_argument('--song_prefix', default=True, action=argparse.BooleanOptionalAction, help="GAX header files from 2005 and onwards don't have this")
 
 args = parser.parse_args()
 gba_path = os.path.realpath(args.file_path)
+prefix = args.song_prefix
 
 
 with open(gba_path, "rb") as f:
+
+	#the same as Gaxripper v2, but we only save the header file
+
 	gba_rom = f.read()
 
 	#parse the .gba ROM header
-	gba_header = gba.parse_rom_header(gba_rom)
+	try:
+		gba_header = gba.parse_rom_header(gba_rom)
+	except:
+		print('The file specified is either not a Game Boy Advance ROM, or is corrupted.')
 
 	gameTitle = gba_header["game_title"].rstrip('\x00')
 	gameCode = gba_header["game_code"].rstrip('\x00')
 
 	#print GBA ROM info, parameters and settings
 	if gameTitle == '':
-		print("> Game title | <n/a>")
+		print("> Internal game title | <n/a>")
 	else:
-		print("> Game title |", gameTitle)
-
-	print(">============|")
+		print("> Internal game title |", gameTitle)
 
 	if gameCode == '':
-		print("> Game code  | <n/a>")
+		print("> Internal game code  | <n/a>")
 	else:
-		print("> Game code  |", gameCode)
+		print("> Internal game code  |", gameCode)
 
-	print("> Maker code |", gba_header["maker_code"] + '\n')
+	try:
+		product_code = gba.get_product_code(gba_header["game_code"])
+		print('> Product code        |', product_code)
+	except:
+		product_code = None
+		print('> Product code        | <n/a>')
+
+	print(">=====================|--------------")
+
+	print("> Maker code          |", gba_header["maker_code"])
+	print('> Fixed value         |', hex(gba_header["fixed_value"]))
+	print('> Main unit code      |', hex(gba_header["main_unit_code"]))
+	print('> Software version    |', gba_header["software_version"])
+	print('> Compliment check    |', hex(gba_header["compliment_check"]) + '\n\n')
 
 
 
@@ -125,7 +144,7 @@ print("> GAX data unpacked.\n")
 print("> Reconstructing music.h")
 try:
 	g = open("music.h", "w")
-	g.write(gax.get_cppMusicHeader(gax_object))
+	g.write(gax.get_cppMusicHeader(gax_object, has_prefix = prefix))
 	print("> music.h reconstructed")
 	g.close()
 except Exception as e:
