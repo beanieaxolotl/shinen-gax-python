@@ -1,6 +1,7 @@
 # Shin'en GAX Sound Engine tools for Python
 
 This repo houses conversion and (un)packing tools for music and FX files made with Shin'en Multimedia's [GAX Sound Engine] library. 
+This also works with .gax/.o files made with NAX Sound Engine, which uses the same formats as GAX.
 Since this is a complete rewrite, some things in the original repo (i.e XM to GAX) are nonexistent, but this doesn't mean I won't implement them in the future.
 
 
