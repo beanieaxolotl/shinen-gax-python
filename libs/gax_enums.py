@@ -1,8 +1,7 @@
 import enum
 
 class step_type(enum.Enum):
-	note_off = 0x81
-	rest_multi = 0xff
+	note_off = 0x1
 
 class perf_row_effect(enum.Enum):
 	no_effect = 0x0
