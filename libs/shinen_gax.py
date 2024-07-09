@@ -1,21 +1,21 @@
 import struct
 import re
-import libs.general as general
+import general
 import math
-import libs.gba as gba
+import gba
 
-from libs.gax_enums import (
+from gax_enums import (
 	step_type, perf_row_effect, step_effect
 )
-from libs.gax_constants import (
+from gax_constants import (
 	mixing_rates, note_names, max_channels, min_channels, max_fx_channels, libgax_consts
 )
 
 
 class step_command:
-	def __init__(self, data, offset):
+	def __init__(self):
 		self.semitone = None
-		self.instrument = 0
+		self.instrument = None
 		self.effect_type = None
 		self.effect_param = None
 
@@ -80,7 +80,7 @@ def unpack_steps(data, offset, step_count):
 			raise ValueError('Note delay effect param is {0:#x} when it should be 0xd'.format(efx_param))
 
 	if general.get_bool_from_num(data[offset]) == True:
-		return None
+		return [step_command() for n in range(step_count)] #create a new empty pattern instead of outputting a None object
 
 	offset += 1
 	cmd_size = 0
@@ -88,18 +88,18 @@ def unpack_steps(data, offset, step_count):
 	step_counter = 0 #keep track of how many steps we actually parse
 
 	while step_counter < step_count:
-		unpacked_step = step_command(data, offset)
+		unpacked_step = step_command()
 
 		if data[offset] == 0x80:
 			##empty step
 			cmd_size = 1
 			step_counter += 1
-			step_list.append(None)
+			step_list.append(step_command()) #blank step command object
 
 		elif data[offset] == 0xff:
 			##multiple empty steps
 			for i in range(0, data[offset+1]):
-				step_list.append(None)
+				step_list.append(step_command())
 
 			cmd_size = 2
 			step_counter += data[offset+1]
@@ -151,7 +151,8 @@ def unpack_steps(data, offset, step_count):
 
 def pack_steps(step_data):
 
-	if step_data == None:
+	#check for completely empty patterns
+	if step_data == [step_command() for n in range(len(step_data))]:
 		packed_steps = b'\x01'
 		return packed_steps
 		
@@ -304,45 +305,78 @@ class song_properties:
 
 	'''
 
-	def __init__(self, data, offset, is_gax_gba = False):
+	def __init__(self, data, offset, is_gax_gba = False, unpack = True):
 
-		props_struct = struct.unpack_from('<Bx4Hxx3L2HB', data, offset)
+		if unpack:
+			props_struct = struct.unpack_from('<Bx4Hxx3L2HB', data, offset)
 
-		if props_struct[0] > max_channels:
-			raise ValueError("Maximum channel count exceeded")
+			if props_struct[0] > max_channels:
+				raise ValueError("Maximum channel count exceeded")
 
-		#unpack song properties and params
-		self.channel_count = props_struct[0]
-		self.step_count = props_struct[1]
-		self.song_length = props_struct[2]
-		self.restart_position = props_struct[3]
-		self.song_volume = props_struct[4]
+			#unpack song properties and params
+			self.channel_count = props_struct[0]
+			self.step_count = props_struct[1]
+			self.song_length = props_struct[2]
+			self.restart_position = props_struct[3]
+			self.song_volume = props_struct[4]
 
-		if is_gax_gba:
-			self.step_data_pointer = gba.from_rom_address(props_struct[5])
-			self.instrument_set_pointer = gba.from_rom_address(props_struct[6])
-			self.wave_set_pointer = gba.from_rom_address(props_struct[7])
+			if is_gax_gba:
+				self.step_data_pointer = gba.from_rom_address(props_struct[5])
+				self.instrument_set_pointer = gba.from_rom_address(props_struct[6])
+				self.wave_set_pointer = gba.from_rom_address(props_struct[7])
+			else:
+				self.step_data_pointer = props_struct[5]
+				self.instrument_set_pointer = props_struct[6]
+				self.wave_set_pointer = props_struct[7]			
+
+			self.mixing_rate = props_struct[8]
+			self.fx_mixing_rate = props_struct[9]
+
+			self.fx_channel_count = props_struct[10]
+
+			self.channel_addr_table = list(struct.unpack_from("<" + "L" * self.channel_count, data, offset + 0x20))
+
+			if is_gax_gba:
+
+				#convert ROM addresses to pointers into ROM file
+
+				for i in range(len(self.channel_addr_table)):
+					self.channel_addr_table[i] = gba.from_rom_address(self.channel_addr_table[i])	
+		
 		else:
-			self.step_data_pointer = props_struct[5]
-			self.instrument_set_pointer = props_struct[6]
-			self.wave_set_pointer = props_struct[7]			
 
-		self.mixing_rate = props_struct[8]
-		self.fx_mixing_rate = props_struct[9]
+			self.channel_count = 6
+			self.step_count = 32
+			self.song_length = 1
+			self.restart_position = 0
+			self.song_volume = 256
 
-		self.fx_channel_count = props_struct[10]
+			self.mixing_rate = 15769
+			self.fx_mixing_rate = 0 # share the song's mixing rate
 
-		self.channel_addr_table = list(struct.unpack_from("<" + "L" * self.channel_count, data, offset + 0x20))
-
-		if is_gax_gba:
-
-			#convert ROM addresses to pointers into ROM file
-
-			for i in range(len(self.channel_addr_table)):
-				self.channel_addr_table[i] = gba.from_rom_address(self.channel_addr_table[i])	
+			self.fx_channel_count = 2
 
 
 	def pack_properties(self) -> dict:
+
+		#integrity checks for properties
+		##
+		#music channels
+		if self.channel_count > max_channels:
+			raise ValueError("Maximum channel count exceeded")
+		#music mix rate
+		if self.mixing_rate < min(mixing_rates) or self.mixing_rate > max(mixing_rates):
+			raise ValueError("Invalid music mixing rate supplied")
+		#fx mix rate
+		if (self.fx_mixing_rate < min(mixing_rates) or 
+			self.fx_mixing_rate > max(mixing_rates)) and self.fx_mixing_rate != 0:
+			#0 is actually a valid value here; this means that it shares the music mixing rate
+			raise ValueError("Invalid FX mixing rate supplied")	
+		#fx channels
+		if (self.fx_channel_count > max_fx_channels):
+			#0 is actually a valid value here; this means that it shares the music mixing rate
+			raise ValueError("Maximum FX channel count exceeded")
+		
 
 		a = struct.pack('<Bx4Hxx', 
 			self.channel_count,
@@ -373,73 +407,80 @@ class song_data:
 	'''
 
 
-	def __init__(self, data, offset, is_gax_gba = False):
+	def __init__(self, data, offset, is_gax_gba = False, unpack = True):
 
-		self.properties = song_properties(data, offset, is_gax_gba)
+		self.properties = song_properties(data, offset, is_gax_gba, unpack)
 
-		if self.properties.channel_count != 0: # the object has song data
+		if unpack:
 
-			#get song metadata field
-			field_end_offset = min(self.properties.channel_addr_table)
+			if self.properties.channel_count != 0: # the object has song data
 
-			for i in range(4):
-				if data[field_end_offset - 1] != 0x00:
-					break
-				field_end_offset -= 1
+				#get song metadata field
+				field_end_offset = min(self.properties.channel_addr_table)
 
-			field_start_offset = field_end_offset
-			while 0x20 <= data[field_start_offset - 1] <= 0x92 or data[field_start_offset - 1] == 0xa9:
-				field_start_offset -= 1
+				for i in range(4):
+					if data[field_end_offset - 1] != 0x00:
+						break
+					field_end_offset -= 1
 
-			while data[field_start_offset] != ord('"'):
-				field_start_offset += 1
-			while data[field_start_offset+1] == ord('"'):
-				field_start_offset += 1
+				field_start_offset = field_end_offset
+				while 0x20 <= data[field_start_offset - 1] <= 0x92 or data[field_start_offset - 1] == 0xa9:
+					field_start_offset -= 1
 
-			self.song_metadata_field = data[field_start_offset:field_end_offset].decode('iso-8859-1')
+				while data[field_start_offset] != ord('"'):
+					field_start_offset += 1
+				while data[field_start_offset+1] == ord('"'):
+					field_start_offset += 1
+
+				self.song_metadata_field = data[field_start_offset:field_end_offset].decode('iso-8859-1')
 
 
-			#reconstruct order list
-			channel_num = 0
-			self.order_list = list()
-			step_data_pointers = list()
+				#reconstruct order list
+				channel_num = 0
+				self.order_list = list()
+				step_data_pointers = list()
 
-			for channel_address in self.properties.channel_addr_table:
+				for channel_address in self.properties.channel_addr_table:
 
-				channel_num += 1
-				offset = 0
-				order_line = list()
+					channel_num += 1
+					offset = 0
+					order_line = list()
 
-				for __ in range(self.properties.song_length):
+					for __ in range(self.properties.song_length):
 
-					#get relative pattern pointer from the order list
-					order_block = list(struct.unpack("<Hbx", data[channel_address+(offset*4):channel_address+((offset+1)*4)]))
+						#get relative pattern pointer from the order list
+						order_block = list(struct.unpack("<Hbx", data[channel_address+(offset*4):channel_address+((offset+1)*4)]))
 
-					#make it absolute
-					order_block[0] += self.properties.step_data_pointer
-					step_data_pointers.append(order_block[0])
+						#make it absolute
+						order_block[0] += self.properties.step_data_pointer
+						step_data_pointers.append(order_block[0])
 
-					order_line.append(order_block)
-					offset += 1
+						order_line.append(order_block)
+						offset += 1
 
-				self.order_list.append(order_line)
+					self.order_list.append(order_line)
 
-			#create map of the patterns in the song
-			step_data_pointers = sorted(set(list(step_data_pointers)))
-			#retrieve original order list
-			for channel in self.order_list:
-				for position in channel:
-					position[0] = step_data_pointers.index(position[0])
+				#create map of the patterns in the song
+				step_data_pointers = sorted(set(list(step_data_pointers)))
+				#retrieve original order list
+				for channel in self.order_list:
+					for position in channel:
+						position[0] = step_data_pointers.index(position[0])
 
-			#unpack the patterns / step data
-			self.patterns = list()
+				#unpack the patterns / step data
+				self.patterns = list()
 
-			for step_data_addr in step_data_pointers:
+				for step_data_addr in step_data_pointers:
 
-				step_list = unpack_steps(data, step_data_addr, self.properties.step_count)
-				self.patterns.append(step_list)
+					step_list = unpack_steps(data, step_data_addr, self.properties.step_count)
+					self.patterns.append(step_list)
 
-		#else we have an FX object
+			#else we have an FX object
+
+		else:
+
+			self.order_list = [[[0,0]]]*self.properties.channel_count
+			self.patterns = [[step_command() for n in range(self.properties.step_count)]]
 
 
 	def get_properties(self):
@@ -523,142 +564,201 @@ class song_data:
 
 
 class wave_set:
-	def __init__(self, data, offset, is_gax_gba = False):
+	def __init__(self, data, offset, is_gax_gba = False, unpack = True):
 
-		if is_gax_gba:
-			end_offset = gba.from_rom_address(int.from_bytes(data[4:8], byteorder='little'))
-		else:
-			end_offset = int.from_bytes(data[4:8], byteorder='little')
+		if unpack:
 
-		self.wave_bank = list()
-
-		while True:
-
-			if offset >= len(data) or offset >= end_offset:
-				break
-
-			wave_metadata = list(struct.unpack_from("<2L", data, offset) )
 			if is_gax_gba:
-				if wave_metadata[0] != 0: # don't attempt to turn a null address into a file offset
-					wave_metadata[0] = gba.from_rom_address(wave_metadata[0])
-
-			if wave_metadata[0] >= len(data):
-				break
+				end_offset = gba.from_rom_address(int.from_bytes(data[4:8], byteorder='little'))
 			else:
-				offset += 8
-				self.wave_bank.append(data[wave_metadata[0]:wave_metadata[0]+wave_metadata[1]])
+				end_offset = int.from_bytes(data[4:8], byteorder='little')
+
+			self.wave_bank = list()
+
+			while True:
+
+				if offset >= len(data) or offset >= end_offset:
+					break
+
+				wave_metadata = list(struct.unpack_from("<2L", data, offset) )
+				if is_gax_gba:
+					if wave_metadata[0] != 0: # don't attempt to turn a null address into a file offset
+						wave_metadata[0] = gba.from_rom_address(wave_metadata[0])
+
+				if wave_metadata[0] >= len(data):
+					break
+				else:
+					offset += 8
+					self.wave_bank.append(data[wave_metadata[0]:wave_metadata[0]+wave_metadata[1]])
+
+		else:
+			self.wave_bank = [b''] # sample #0 is always empty in GAX v3+
 
 
 class instrument:
-	def __init__(self, data, offset, is_gax_gba = False):
+	def __init__(self, data, offset, is_gax_gba = False, unpack = True):
 
-		#subfunctions
-		def append_wave_params(params_list):
-			wave_params_struct = struct.unpack_from("<h??l3LH", data, offset)
-			params_list.append({
-				"finetune": wave_params_struct[0],
-				"modulate": wave_params_struct[1], #complete guess. only values are 0 and 1, and isn't used in later (Martin Schioeler) GAX compositions
-				"ping_pong": wave_params_struct[2],
-				"start_position": wave_params_struct[3],
-				"loop_start": wave_params_struct[4],
-				"loop_end": wave_params_struct[5],
-				"unknown_1": wave_params_struct[6],
-				"unknown_2": wave_params_struct[7]
-			})		
+		if unpack:
 
-		instrument_header_pointer = offset
+			#subfunctions
+			def append_wave_params(params_list):
+				wave_params_struct = struct.unpack_from("<h??l3LH", data, offset)
+				params_list.append({
+					"finetune": wave_params_struct[0],
+					"modulate": wave_params_struct[1], #complete guess. only values are 0 and 1, and isn't used in later (Martin Schioeler) GAX compositions
+					"ping_pong": wave_params_struct[2],
+					"start_position": wave_params_struct[3],
+					"loop_start": wave_params_struct[4],
+					"loop_end": wave_params_struct[5],
+					"unknown_1": wave_params_struct[6],
+					"unknown_2": wave_params_struct[7]
+				})		
 
-		header_struct = struct.unpack_from("<?4Bxxx3BxL2bHL", data, offset)
-		self.header = {
-			"is_null": header_struct[0],
-			"wave_slots": list(header_struct[1:5]),
+			instrument_header_pointer = offset
 
-			"vibrato_params": {
-				"vibrato_wait": header_struct[5], #GAX screenshot used as a source for these names
-				"vibrato_depth": header_struct[6],
-				"vibrato_speed": header_struct[7]
+			header_struct = struct.unpack_from("<?4Bxxx3BxL2bHL", data, offset)
+			self.header = {
+				"is_null": header_struct[0],
+				"wave_slots": list(header_struct[1:5]),
+
+				"vibrato_params": {
+					"vibrato_wait": header_struct[5], #GAX screenshot used as a source for these names
+					"vibrato_depth": header_struct[6],
+					"vibrato_speed": header_struct[7]
+				}
 			}
-		}
 
 
-		#unpack perf list data
-		perf_list_pointer = header_struct[12]
-		if is_gax_gba:
-			perf_list_pointer = gba.from_rom_address(perf_list_pointer)
+			#unpack perf list data
+			perf_list_pointer = header_struct[12]
+			if is_gax_gba:
+				perf_list_pointer = gba.from_rom_address(perf_list_pointer)
 
-		offset = perf_list_pointer
-		self.perf_list = {
-			"perf_row_speed": header_struct[9],
-			"perf_list_data": list()
-		}
+			offset = perf_list_pointer
+			self.perf_list = {
+				"perf_row_speed": header_struct[9],
+				"perf_list_data": list()
+			}
 
-		perflist_struct = struct.unpack_from('<B?Bx4B', data, offset)
-
-		for __ in range(header_struct[10]):
 			perflist_struct = struct.unpack_from('<B?Bx4B', data, offset)
-			perf_row = {
-				"note": perflist_struct[0], #HQ GAX editor screenshot used as a source for these names
-				"fixed": perflist_struct[1],
-				"wave_slot_id": perflist_struct[2],
 
-				"effect": [(perflist_struct[3], perf_row_effect(perflist_struct[4])), (perflist_struct[5], perf_row_effect(perflist_struct[6]))]
+			for __ in range(header_struct[10]):
+				perflist_struct = struct.unpack_from('<B?Bx4B', data, offset)
+				perf_row = {
+					"note": perflist_struct[0], #HQ GAX editor screenshot used as a source for these names
+					"fixed": perflist_struct[1],
+					"wave_slot_id": perflist_struct[2],
+
+					"effect": [(perflist_struct[3], perf_row_effect(perflist_struct[4])), (perflist_struct[5], perf_row_effect(perflist_struct[6]))]
+				}
+				self.perf_list["perf_list_data"].append(perf_row)
+				offset += 8
+
+
+			#unpack volume envelope data
+			volenv_pointer = header_struct[8]
+			if is_gax_gba:
+				volenv_pointer = gba.from_rom_address(volenv_pointer)
+
+			self.unknown_u16 = header_struct[11]
+
+			offset = volenv_pointer
+			del header_struct
+
+			volenv_struct = struct.unpack_from('<4B', data, offset)
+			self.volume_envelope = {
+				"sustain_point": volenv_struct[1],
+				"loop_start": volenv_struct[2],
+				"loop_end": volenv_struct[3],
+				"points": []
 			}
-			self.perf_list["perf_list_data"].append(perf_row)
-			offset += 8
+
+			#conversion of empty envelope looping and sustain values
+			if self.volume_envelope["sustain_point"] == 0xff:
+				self.volume_envelope["sustain_point"] = None
+			if self.volume_envelope["loop_start"] == 0xff:
+				self.volume_envelope["loop_start"] = None
+			if self.volume_envelope["loop_end"] == 0xff:
+				self.volume_envelope["loop_end"] = None
+
+			offset += 4 #go to start of volenv data
+			for __ in range(volenv_struct[0]):
+				point = struct.unpack_from('<HxxB3x', data, offset) #ignore slope rise/fall value
+				self.volume_envelope["points"].append(point)
+				offset += 8
+
+			del volenv_struct
 
 
-		#unpack volume envelope data
-		volenv_pointer = header_struct[8]
-		if is_gax_gba:
-			volenv_pointer = gba.from_rom_address(volenv_pointer)
+			#finally, unpack wave parameters
 
-		self.unknown_u16 = header_struct[11]
+			instrument_wave_pointer = instrument_header_pointer + 24
+			offset = instrument_wave_pointer
 
-		offset = volenv_pointer
-		del header_struct
+			self.wave_params = list()
 
-		volenv_struct = struct.unpack_from('<4B', data, offset)
-		self.volume_envelope = {
-			"sustain_point": volenv_struct[1],
-			"loop_start": volenv_struct[2],
-			"loop_end": volenv_struct[3],
-			"points": []
-		}
+			wave_slot_count = len([x for x in self.header["wave_slots"] if x != 0])
 
-		#conversion of empty envelope looping and sustain values
-		if self.volume_envelope["sustain_point"] == 0xff:
-			self.volume_envelope["sustain_point"] = None
-		if self.volume_envelope["loop_start"] == 0xff:
-			self.volume_envelope["loop_start"] = None
-		if self.volume_envelope["loop_end"] == 0xff:
-			self.volume_envelope["loop_end"] = None
+			if wave_slot_count > 0:
+				for __ in range(wave_slot_count): #do for each non-zero wave slot (fixes Iridion II (Beta))
+					append_wave_params(self.wave_params)
+					offset += 24
 
-		offset += 4 #go to start of volenv data
-		for __ in range(volenv_struct[0]):
-			point = struct.unpack_from('<HxxB3x', data, offset) #ignore slope rise/fall value
-			self.volume_envelope["points"].append(point)
-			offset += 8
-
-		del volenv_struct
-
-
-		#finally, unpack wave parameters
-
-		instrument_wave_pointer = instrument_header_pointer + 24
-		offset = instrument_wave_pointer
-
-		self.wave_params = list()
-
-		wave_slot_count = len([x for x in self.header["wave_slots"] if x != 0])
-
-		if wave_slot_count > 0:
-			for __ in range(wave_slot_count): #do for each non-zero wave slot (fixes Iridion II (Beta))
+			else: #handler for empty instruments:
 				append_wave_params(self.wave_params)
-				offset += 24
 
-		else: #handler for empty instruments:
-			append_wave_params(self.wave_params)
+		else:
 
+			#prepare dicts for the class variables 
+			perf_row = {
+				"note": 0,
+				"fixed": False,
+				"wave_slot_id": 0,
+
+				"effect": [(0, perf_row_effect(0)), (0, perf_row_effect(0))]
+			}
+			wave_param = {
+				"finetune": 0,
+				"modulate": False,
+				"ping_pong": False,
+				"start_position": 0,
+				"loop_start": 0,
+				"loop_end": 0,
+				"unknown_1": 0,
+				"unknown_2": 0
+			}
+
+			self.header = {
+				"is_null": True,
+				"wave_slots": [0]*4,
+
+				"vibrato_params": {
+					"vibrato_wait": 0,
+					"vibrato_depth": 0,
+					"vibrato_speed": 0
+				}
+			}
+
+			self.perf_list = {
+				"perf_row_speed": 0,
+				"perf_list_data": [perf_row]
+			}
+
+			self.unknown_u16 = 0
+
+			self.volume_envelope = {
+				"sustain_point": None,
+				"loop_start": None,
+				"loop_end": None,
+				"points": [(0,255)]
+			}
+
+			self.wave_params = [wave_param]
+
+			del perf_row
+			del wave_param
+
+			
 
 	def pack_instrument(self):
 
@@ -777,17 +877,24 @@ class gax_module:
 	'''
 	Python class that represents a GAX binary blob
 	'''
-	def __init__(self):
+	def __init__(self, auth="Manfred Linzner"):
 		self.version = "3.05A"
 		self.instrument_set = list()
 		self.wave_set = list()
 		self.song_bank = {
-			"auth": "Manfred Linzner",
+			"auth": auth,
 			"songs": list()
 		}
 
 	def get_song_count(self) -> int:
 		return len(self.song_bank["songs"])
+
+	def get_wave_count(self) -> int:
+		return len(self.wave_set)
+
+	def get_instrument_count(self) -> int:
+		return len(self.instrument_set)	
+
 
 	def get_auth(self) -> str:
 		return self.song_bank["auth"]
@@ -1207,6 +1314,20 @@ def pack_GAX_file(gax_module, compile_object=False):
 			offset += 4
 
 	return output_stream
+
+
+def save_GAX_file(gax_module):
+	'''
+	Saves a shinen_gax GAX object into a .gax_project file
+	'''
+	return 0
+
+
+def load_GAX_file(gax_module):
+	'''
+	Loads a shinen_gax GAX object from a .gax_project file
+	'''
+	return 0	
 
 
 def get_GAX_version(rom):
