@@ -188,8 +188,6 @@ def pack_steps(step_data):
 
 		if not is_empty(command):
 			rest_compress()
-
-		if not is_empty(command):
 			rest_counter = -1
 		else:
 			rest_counter += 1
