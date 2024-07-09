@@ -30,12 +30,12 @@ class step_command:
 			except:
 				effect_type = self.effect_type # handler for unknown GAX effects (they're still saved btw)
 		else:
-			effect_type = 0
+			effect_type = None
 
 		if self.effect_param != None:
 			effect_param = self.effect_param
 		else:
-			effect_param = 0
+			effect_param = None
 
 		#correction of effect param for note delay command
 		if self.effect_type != None and type(effect_type) != int:
@@ -45,18 +45,29 @@ class step_command:
 				effect_param = self.effect_param + 0xd0	
 
 
-		if self.semitone != None and self.instrument not in [None, 0] and self.effect_type == None and self.effect_param == None:
-			#note (no effect)
-			packed_cmd += struct.pack('<2B', self.semitone ^ 0x80, self.instrument) #upper bit gets set here
+		if self.semitone != None and self.instrument != None and self.effect_type == None and self.effect_param == None:
+			if self.semitone != step_type(0x1): #note (no effect)
+				packed_cmd += struct.pack('<2B', self.semitone ^ 0x80, self.instrument) #upper bit gets set here
+			else: #note off (no effect)
+				packed_cmd += struct.pack('<2B', self.semitone.value ^ 0x80, self.instrument) #upper bit gets set here
 
-		elif self.semitone == None and self.instrument in [None, 0] and self.effect_type != None and self.effect_param != None:
+		elif self.semitone == None and self.instrument == None and self.effect_type != None and self.effect_param != None:
 			#effect only
 			packed_cmd += b'\xfa'
 			packed_cmd += struct.pack('<2B', effect_type, effect_param)
 
+		elif self.semitone == None and self.instrument == None and self.effect_type == None and self.effect_param == None:
+			packed_cmd += b'\x80'
+
 		else:
-			#note (with effect)
-			packed_cmd += struct.pack('<4B', self.semitone, self.instrument, effect_type, effect_param)
+			if self.semitone != step_type(0x1): #note off (with effect)
+				try:
+					packed_cmd += struct.pack('<4B', self.semitone, self.instrument, effect_type, effect_param)
+				except:
+					print(self.semitone, self.instrument, effect_type, effect_param)
+					exit()
+			else: #note (with effect)
+				packed_cmd += struct.pack('<4B', self.semitone.value, self.instrument, effect_type, effect_param)
 
 		return packed_cmd
 
@@ -99,7 +110,7 @@ def unpack_steps(data, offset, step_count):
 		elif data[offset] == 0xff:
 			##multiple empty steps
 			for i in range(0, data[offset+1]):
-				step_list.append(step_command())
+				step_list.append(step_command()) # decompress our RLE command
 
 			cmd_size = 2
 			step_counter += data[offset+1]
@@ -107,42 +118,37 @@ def unpack_steps(data, offset, step_count):
 
 		elif data[offset] == 0xfa:
 			#effect only
-			unpacked_step.semitone = None
-			unpacked_step.instrument = None
 			setEffectData(unpacked_step, data, offset+1)
 
 			cmd_size = 3
 			step_counter += 1
 			step_list.append(unpacked_step)
+		
 
-		elif data[offset] == 0x81:
-			#note off
-			unpacked_step = step_type(0x81)
+		elif general.get_normalized_bit(data[offset], 7) == 1:
+			if (data[offset] & 0x7f) > 1: #strip away the first bit
+				unpacked_step.semitone = data[offset] & 0x7f #note + instrument
+			else:
+				unpacked_step.semitone = step_type.note_off  #note off + instrument
+
+			unpacked_step.instrument = data[offset + 1]
 
 			cmd_size = 2
 			step_counter += 1
 			step_list.append(unpacked_step)
 
 		else:
-
-			if general.get_normalized_bit(data[offset], 7) == 1:
-				#note only
-				unpacked_step.semitone = data[offset] & 0x7f #Strip away the first bit
-				unpacked_step.instrument = data[offset + 1]
-
-				cmd_size = 2
-				step_counter += 1
-				step_list.append(unpacked_step)
-
+			if data[offset] > 1:
+				unpacked_step.semitone = data[offset] #note + effect data
 			else:
-				#note + effect data
-				unpacked_step.semitone = data[offset]
-				unpacked_step.instrument = data[offset + 1]
-				setEffectData(unpacked_step, data, offset+2)
+				unpacked_step.semitone = step_type.note_off #note off + effect data
 
-				step_counter += 1
-				cmd_size = 4
-				step_list.append(unpacked_step)
+			unpacked_step.instrument = data[offset + 1]
+			setEffectData(unpacked_step, data, offset+2)
+
+			step_counter += 1
+			cmd_size = 4
+			step_list.append(unpacked_step)
 
 		offset += cmd_size
 
@@ -182,11 +188,7 @@ def pack_steps(step_data):
 			rest_counter += 1
 
 		if rest_counter == -1:
-
-			if command == step_type.note_off:
-				packed_steps += (command.value).to_bytes(2, byteorder='little', signed=False)
-			else:
-				packed_steps += command.pack_command()
+			packed_steps += command.pack_command()
 
 		step_idx += 1
 
