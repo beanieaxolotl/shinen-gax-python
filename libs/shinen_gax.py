@@ -32,10 +32,7 @@ class step_command:
 		else:
 			effect_type = None
 
-		if self.effect_param != None:
-			effect_param = self.effect_param
-		else:
-			effect_param = None
+		effect_param = self.effect_param
 
 		#correction of effect param for note delay command
 		if self.effect_type != None and type(effect_type) != int:
@@ -157,8 +154,18 @@ def unpack_steps(data, offset, step_count):
 
 def pack_steps(step_data):
 
+	def is_empty(command):
+		return(command.semitone == None and 
+			   command.instrument == None and 
+			   command.effect_type == None and 
+			   command.effect_param == None)
+
 	#check for completely empty patterns
-	if step_data == [step_command() for n in range(len(step_data))]:
+	rest_counter = 0
+	for step in step_data:
+		if is_empty(step):
+			rest_counter += 1
+	if rest_counter == len(step_data):
 		packed_steps = b'\x01'
 		return packed_steps
 		
@@ -179,10 +186,10 @@ def pack_steps(step_data):
 
 	for command in step_data:
 
-		if command != None:
+		if not is_empty(command):
 			rest_compress()
 
-		if command != None:
+		if not is_empty(command):
 			rest_counter = -1
 		else:
 			rest_counter += 1
@@ -193,9 +200,8 @@ def pack_steps(step_data):
 		step_idx += 1
 
 	if rest_counter >= 0 and step_idx == len(step_data):
-		if command == None:
+		if is_empty(command):
 			rest_compress()
-
 
 	return packed_steps
 
