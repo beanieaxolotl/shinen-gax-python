@@ -7,8 +7,8 @@ class perf_row_effect(enum.Enum):
 	no_effect = 0x0
 	pitch_slide_up = 0x1
 	pitch_slide_down = 0x2
-	check_row_switch_timer = 0x5 # set perf row
-	set_row_switch_timer = 0x6
+	jump_to_row = 0x5
+	jump_delay = 0x6
 	volume_slide_up = 0xa
 	volume_slide_down = 0xb
 	set_volume = 0xc
