@@ -32,7 +32,10 @@ class step_command:
 		else:
 			effect_type = None
 
-		effect_param = self.effect_param
+		if self.effect_param != None:
+			effect_param = self.effect_param
+		else:
+			effect_param = None
 
 		#correction of effect param for note delay command
 		if self.effect_type != None and type(effect_type) != int:
@@ -71,6 +74,9 @@ class step_command:
 
 #main functions
 def unpack_steps(data, offset, step_count):	
+	'''
+	Unpack step data from an offset. The step count should be set to the song's step count.
+	'''
 
 	def setEffectData(step, data, offset):
 
@@ -153,6 +159,9 @@ def unpack_steps(data, offset, step_count):
 
 
 def pack_steps(step_data):
+	'''
+	Pack step data into a binary blob
+	'''
 
 	def is_empty(command):
 		return(command.semitone == None and 
@@ -188,6 +197,8 @@ def pack_steps(step_data):
 
 		if not is_empty(command):
 			rest_compress()
+
+		if not is_empty(command):
 			rest_counter = -1
 		else:
 			rest_counter += 1
@@ -201,104 +212,15 @@ def pack_steps(step_data):
 		if is_empty(command):
 			rest_compress()
 
+
 	return packed_steps
 
 
 def semitone_to_note(semitone):
+	'''
+	Converts a given semitone into a formatted tracker note
+	'''
 	return note_names[(semitone+11) % 12] + str(math.floor((semitone+11)/12))
-
-
-def dump_step_data(step_cmd, modern = True):
-	'''
-	Converts step data into a human-readable format.
-
-	Options:
-		modern - If set, this mimics a modern tracker formatting (think OpenMPT, DefleMask, Furnace, etc.)
-
-			     Otherwise this instead formats the data in the style of the original GAX editor
-			     (while having a side effect of reconstructing what the original composer 
-			     saw all these years ago while using the GAX editor)
-
-			     (Screenshot by Shin'en Multimedia / ItsT3K (@itsT3000) used as reference)
-	'''
-
-	def dumpEffect(step_cmd):
-
-		effect_str = ''
-		unknown_effect = False
-
-		if type(step_cmd.effect_type) == step_effect:
-			effect_str = '{:}'.format(f'{step_cmd.effect_type.value:X}')
-
-		if type(step_cmd.effect_type) == int:
-			# fixes output of Song 15, The Adventures of Jimmy Neutron: Boy Genius - Attack of the Twonkies
-			effect_str = '{:}'.format(f'{step_cmd.effect_type:X}')
-			unknown_effect = True
-
-		elif step_cmd.effect_type == None:
-			if modern:
-				effect_str = '-'
-			else:
-				effect_str = '0'
-
-		if step_cmd.effect_param != None:
-			effect_str += '{:0>2}'.format(f'{step_cmd.effect_param:X}')
-		else:
-			if modern:
-				effect_str += '--'
-			else:
-				effect_str += '00'
-
-		'''if unknown_effect:
-			effect_str += " > Unknown/invalid effect"'''
-		return effect_str
-
-	#we just uncompressed the rle data
-
-	if step_cmd == None: # empty step
-
-		if modern:
-			return '--- --- ---'
-		else:
-			return '---    000'
-
-	elif step_cmd == step_type.note_off: # note off
-
-		if modern:
-			return '=== --- ---'
-		else:
-			return 'off    000'
-
-	else:
-
-		if step_cmd.semitone == None: # effect only
-
-			effect_str = dumpEffect(step_cmd)
-
-			if modern:
-				return "--- --- " + effect_str
-
-			return "---    " + effect_str
-
-		if step_cmd.effect_type == None and step_cmd.effect_param == None: #note only
-
-			if modern:
-				return semitone_to_note(step_cmd.semitone) + ' {:0>3}'.format(f'{step_cmd.instrument}') + " ---"
-			else:
-				return semitone_to_note(step_cmd.semitone) + ' {: >3}'.format(f'{step_cmd.instrument}') + "000"
-
-		effect_str = dumpEffect(step_cmd)
-		if step_cmd.instrument == 0:
-			if modern:
-				return semitone_to_note(step_cmd.semitone) + ' --- ' + effect_str
-			else:
-				return semitone_to_note(step_cmd.semitone) + '    ' + effect_str
-		else:
-			if modern: # note + effect
-				return semitone_to_note(step_cmd.semitone) + ' {:0>3}'.format(f'{step_cmd.instrument}') + ' ' + effect_str
-			else:
-				return semitone_to_note(step_cmd.semitone) + ' {: >3}'.format(f'{step_cmd.instrument}') + effect_str
-
 
 
 class song_properties:
@@ -333,7 +255,7 @@ class song_properties:
 			else:
 				self.step_data_pointer = props_struct[5]
 				self.instrument_set_pointer = props_struct[6]
-				self.wave_set_pointer = props_struct[7]			
+				self.wave_set_pointer = props_struct[7]
 
 			self.mixing_rate = props_struct[8]
 			self.fx_mixing_rate = props_struct[9]
@@ -380,7 +302,6 @@ class song_properties:
 			raise ValueError("Invalid FX mixing rate supplied")	
 		#fx channels
 		if (self.fx_channel_count > max_fx_channels):
-			#0 is actually a valid value here; this means that it shares the music mixing rate
 			raise ValueError("Maximum FX channel count exceeded")
 		
 
@@ -485,8 +406,15 @@ class song_data:
 
 		else:
 
-			self.order_list = [[[0,0]]]*self.properties.channel_count
-			self.patterns = [[step_command() for n in range(self.properties.step_count)]]
+			self.order_list = list()
+			self.patterns = list()
+
+			for i in range(self.properties.channel_count):
+				self.order_list.append([[i+1,0]])
+
+			for __ in range(self.properties.channel_count + 1):
+				self.patterns.append([step_command() for n in range(self.properties.step_count)])
+
 
 
 	def get_properties(self):
@@ -715,6 +643,8 @@ class instrument:
 
 		else:
 
+			self.name = ""
+
 			#prepare dicts for the class variables 
 			perf_row = {
 				"note": 0,
@@ -723,7 +653,7 @@ class instrument:
 
 				"effect": [(0, perf_row_effect(0)), (0, perf_row_effect(0))]
 			}
-			wave_param = {
+			wave_params = {
 				"finetune": 0,
 				"modulate": False,
 				"ping_pong": False,
@@ -1248,7 +1178,7 @@ def pack_GAX_file(gax_module, compile_object=False):
 
 	output_stream += struct.pack('<2L', wave_bank_end_pointer, 0)
 
-	for pointer in wave_pointers[1:-1]:
+	for pointer in wave_pointers[1:len(wave_pointers)]:
 		if pointer[1] == 0: #handler for deleted samples
 			output_stream += struct.pack('<2L', 0, 0)
 		else:
