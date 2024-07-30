@@ -536,16 +536,17 @@ class instrument:
 
 			#subfunctions
 			def append_wave_params(params_list):
-				wave_params_struct = struct.unpack_from("<h??l3LH", data, offset)
+				wave_params_struct = struct.unpack_from("<h??LLLlHH", data, offset)
 				params_list.append({
 					"finetune": wave_params_struct[0],
-					"modulate": wave_params_struct[1], #complete guess. only values are 0 and 1, and isn't used in later (Martin Schioeler) GAX compositions
+					"modulate": wave_params_struct[1],
 					"ping_pong": wave_params_struct[2],
 					"start_position": wave_params_struct[3],
 					"loop_start": wave_params_struct[4],
 					"loop_end": wave_params_struct[5],
-					"unknown_1": wave_params_struct[6],
-					"unknown_2": wave_params_struct[7]
+					"modulate_size": wave_params_struct[6],
+					"modulate_step": wave_params_struct[7],
+					"modulate_speed": wave_params_struct[8]
 				})		
 
 			instrument_header_pointer = offset
@@ -653,15 +654,16 @@ class instrument:
 
 				"effect": [(0, perf_row_effect(0)), (0, perf_row_effect(0))]
 			}
-			wave_params = {
+			wave_params_default = {
 				"finetune": 0,
 				"modulate": False,
 				"ping_pong": False,
 				"start_position": 0,
 				"loop_start": 0,
 				"loop_end": 0,
-				"unknown_1": 0,
-				"unknown_2": 0
+				"modulate_size": 0,
+				"modulate_step": 0,
+				"modulate_speed": 0
 			}
 
 			self.header = {
@@ -689,10 +691,10 @@ class instrument:
 				"points": [(0,255)]
 			}
 
-			self.wave_params = [wave_param]
+			self.wave_params = [wave_params_default]
 
 			del perf_row
-			del wave_param
+			del wave_params_default
 
 			
 
@@ -787,15 +789,16 @@ class instrument:
 
 		b = b''
 		for wave_property in self.wave_params:
-			b += struct.pack("<h??l4L",
+			b += struct.pack("<h??LLLlHH",
 				wave_property["finetune"],
 				wave_property["modulate"],
 				wave_property["ping_pong"],
 				wave_property["start_position"],
 				wave_property["loop_start"],
 				wave_property["loop_end"],
-				wave_property["unknown_1"],
-				wave_property["unknown_2"]
+				wave_property["modulate_size"],
+				wave_property["modulate_step"],
+				wave_property["modulate_speed"]
 				)
 
 		instrument_header_packed.append(b) #part 3 > waveform properties
