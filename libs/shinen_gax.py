@@ -536,7 +536,7 @@ class instrument:
 
 			#subfunctions
 			def append_wave_params(params_list):
-				wave_params_struct = struct.unpack_from("<h??LLLlHH", data, offset)
+				wave_params_struct = struct.unpack_from("<h??3Ll2H", data, offset)
 				params_list.append({
 					"finetune": wave_params_struct[0],
 					"modulate": wave_params_struct[1],
@@ -789,7 +789,7 @@ class instrument:
 
 		b = b''
 		for wave_property in self.wave_params:
-			b += struct.pack("<h??LLLlHH",
+			b += struct.pack("<h??3Ll2H",
 				wave_property["finetune"],
 				wave_property["modulate"],
 				wave_property["ping_pong"],
