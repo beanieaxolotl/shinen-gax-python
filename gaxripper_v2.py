@@ -17,7 +17,7 @@ def parse_song_setting(offset, rom):
 	if offset + 0x20 >= len(rom):
 		return None
 
-	settings = struct.unpack_from('<5Hxx3LHHB3xL', rom, offset)
+	settings = struct.unpack_from('<Bx4Hxx3L2HB', rom, offset)
 	settings = {
 		"num_channels": settings[0],
 		"step_count": settings[1],
