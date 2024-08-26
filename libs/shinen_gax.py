@@ -345,7 +345,7 @@ class song_data:
 				#get song metadata field
 				field_end_offset = min(self.properties.channel_addr_table)
 
-				for i in range(4):
+				for i in range(4): #skip through the 32-bit alignment padding
 					if data[field_end_offset - 1] != 0x00:
 						break
 					field_end_offset -= 1
@@ -356,11 +356,10 @@ class song_data:
 
 				while data[field_start_offset] != ord('"'):
 					field_start_offset += 1
-				while data[field_start_offset+1] == ord('"'):
-					field_start_offset += 1
+
+				#removed third while loop: it was breaking songs without a name
 
 				self.song_metadata_field = data[field_start_offset:field_end_offset].decode('iso-8859-1')
-
 
 				#reconstruct order list
 				channel_num = 0
@@ -460,9 +459,16 @@ class song_data:
 
 	def get_song_metadata(self) -> dict:
 		metadata = re.match(r"\"(.+)?\" © (.+)", self.song_metadata_field).groups()
+
+		#handler for nonexistent song names
+		if metadata[0] == None:
+			song_name = ''
+		else:
+			song_name = metadata[0]
+
 		metadata = {
 			#internal names gleaned from GAX v3.chm and ghx2 files
-			"songname": metadata[0],
+			"songname": song_name,
 			"auth": metadata[1]
 		}
 		return metadata
