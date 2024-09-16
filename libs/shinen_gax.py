@@ -350,9 +350,19 @@ class song_data:
 						break
 					field_end_offset -= 1
 
+				
+				#extract song metadata
+
 				field_start_offset = field_end_offset
+				quote_counter = 0
+
 				while 0x20 <= data[field_start_offset - 1] <= 0x92 or data[field_start_offset - 1] == 0xa9:
 					field_start_offset -= 1
+
+					if data[field_start_offset] == ord('"'):
+						quote_counter += 1
+						if quote_counter >= 2: #fixes Happy Feet - Land Exploration
+							break
 
 				while data[field_start_offset] != ord('"'):
 					field_start_offset += 1
@@ -360,6 +370,7 @@ class song_data:
 				#removed third while loop: it was breaking songs without a name
 
 				self.song_metadata_field = data[field_start_offset:field_end_offset].decode('iso-8859-1')
+
 
 				#reconstruct order list
 				channel_num = 0
