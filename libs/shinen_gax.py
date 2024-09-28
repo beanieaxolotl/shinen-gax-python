@@ -220,7 +220,8 @@ def semitone_to_note(semitone):
 	'''
 	Converts a given semitone into a formatted tracker note
 	'''
-	return note_names[(semitone+11) % 12] + str(math.floor((semitone+11)/12))
+	return note_names[(semitone-2) % 12] + str(math.floor((semitone-2)/12))
+	#cross checked with GAX tracker screenshot: B-5 = 0x49
 
 
 class song_properties:
