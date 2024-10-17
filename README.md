@@ -19,7 +19,6 @@ Since this is a complete rewrite, some things in the original repo (i.e XM to GA
 - GAX library detection - Detects the GAX Sound Engine library (+ functions from libgax.a) in a Game Boy Advance ROM.
 
 ## To do:
-- Implement the export of GAX sound effects
 - Proper support for earlier revisions of GAX v3, GAX v2 and v1 (if possible)
 - Implement .ELF file reconstruction for GBA decompilation projects.
 
