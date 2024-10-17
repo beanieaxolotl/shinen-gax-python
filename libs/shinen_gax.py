@@ -275,7 +275,7 @@ class song_properties:
 		else:
 
 			self.channel_count = 6
-			self.step_count = 32
+			self.step_count = 64 #confirmed by Harry Potter: Quidditch World Cup -> "" © Manfred Linzner
 			self.song_length = 1
 			self.restart_position = 0
 			self.song_volume = 256
@@ -351,7 +351,6 @@ class song_data:
 						break
 					field_end_offset -= 1
 
-				
 				#extract song metadata
 
 				field_start_offset = field_end_offset
@@ -371,7 +370,6 @@ class song_data:
 				#removed third while loop: it was breaking songs without a name
 
 				self.song_metadata_field = data[field_start_offset:field_end_offset].decode('iso-8859-1')
-
 
 				#reconstruct order list
 				channel_num = 0
@@ -421,7 +419,7 @@ class song_data:
 			self.patterns = list()
 
 			for i in range(self.properties.channel_count):
-				self.order_list.append([[i+1,0]])
+				self.order_list.append([[i,0]])
 
 			for __ in range(self.properties.channel_count + 1):
 				self.patterns.append([step_command() for n in range(self.properties.step_count)])
@@ -550,6 +548,8 @@ class wave_set:
 class instrument:
 	def __init__(self, data, offset, is_gax_gba = False, unpack = True):
 
+		self.name = ""
+
 		if unpack:
 
 			#subfunctions
@@ -648,8 +648,9 @@ class instrument:
 			instrument_wave_pointer = instrument_header_pointer + 24
 			offset = instrument_wave_pointer
 
-			self.wave_params = list()
+			#only retrieve the used wave parameters here:
 
+			self.wave_params = list()
 			wave_slot_count = len([x for x in self.header["wave_slots"] if x != 0])
 
 			if wave_slot_count > 0:
@@ -661,8 +662,6 @@ class instrument:
 				append_wave_params(self.wave_params)
 
 		else:
-
-			self.name = ""
 
 			#prepare dicts for the class variables 
 			perf_row = {
@@ -829,6 +828,39 @@ class instrument:
 
 		return instrument_packed
 
+	def pretty_print_perflist(self):
+		'''
+		Prints an ASCII representation of the instrument's performance list
+		'''
+		output_str = ''
+
+		for row in self.perf_list['perf_list_data']:
+
+			output_str += '|'
+
+			if row['note'] != 0:
+				output_str += semitone_to_note(row['note']) + ' '
+			else:
+				output_str += '--- '
+
+			if row['fixed']:
+				output_str += '* '
+			else:
+				output_str += '- '
+
+			output_str += "{} ".format(row['wave_slot_id'])
+
+			for effect in row['effect']:
+				if effect[1].value == 0 and effect[0] == 0:
+					output_str += '---'
+				else:
+					output_str += '{:0>1X}{:0>2X}'.format(effect[1].value,effect[0])
+
+			output_str += '|\n'
+
+		return output_str
+
+
 
 class gax_module:
 	'''
@@ -847,7 +879,7 @@ class gax_module:
 		return len(self.song_bank["songs"])
 
 	def get_wave_count(self) -> int:
-		return len(self.wave_set)
+		return len(self.wave_set.wave_bank)
 
 	def get_instrument_count(self) -> int:
 		return len(self.instrument_set)	
@@ -953,8 +985,6 @@ def unpack_GAX_file(gax_file):
 
 				#set the auth tag when we find it
 				unpacked_GAX_file.song_bank["auth"] = auth_tag
-
-
 				unpacked_GAX_file.song_bank["songs"].append(unpacked_song_data)
 
 			song_pointer_id += 1
@@ -1115,7 +1145,12 @@ def pack_GAX_file(gax_module, compile_object=False):
 	else:
 		#otherwise just create the NAX file header.
 		#the zero padding is a placeholder for the song property pointers
-		output_stream += b'GAX!' + (b'\x00\x00\x00\x00') * gax_module.get_song_count()
+		song_count = gax_module.get_song_count()
+		if song_count == 0:
+			song_count = 1
+
+		output_stream += b'GAX!' + (b'\x00\x00\x00\x00') * song_count
+
 
 
 	#some common-sense error handling
@@ -1209,82 +1244,85 @@ def pack_GAX_file(gax_module, compile_object=False):
 	song_pointers = list()
 
 
-	for song in gax_module.song_bank["songs"]:
-		sequence_pointer = len(output_stream)
-		track_data = song["songdata"].pack_song_data() # these are called "gaxSongXYZ_tracks"
-		exp_auth = (
-			'"' + song["songname"] + '" © ' + gax_module.get_auth()
-			).encode('iso-8859-1') #exported metadata string
+	if len(gax_module.song_bank["songs"]) > 0:
+
+		# music data #
+
+		for song in gax_module.song_bank["songs"]:
+
+			sequence_pointer = len(output_stream)
+			track_data = song["songdata"].pack_song_data() # these are called "gaxSongXYZ_tracks"
+			exp_auth = (
+				'"' + song["songname"] + '" © ' + gax_module.get_auth()
+				).encode('iso-8859-1') #exported metadata string
 
 
-		output_stream += track_data["pattern_data"]
-		output_stream += exp_auth
-		while general.is_dword_aligned(len(output_stream)) != True:
-			output_stream += b'\x00' #align the end of this data to the nearest dword
+			output_stream += track_data["pattern_data"]
+			output_stream += exp_auth
+			while general.is_dword_aligned(len(output_stream)) != True:
+				output_stream += b'\x00' #align the end of this data to the nearest dword
 
-		#create channel playlists (or positions)
+			#create channel playlists (or positions)
 
-		pos_idx = 0 #keep track of the current "position"
-		channel_address_table = list()
-		for position in song["songdata"].order_list:
-			channel_address_table.append(len(output_stream))
+			pos_idx = 0 #keep track of the current "position"
+			channel_address_table = list()
+			for position in song["songdata"].order_list:
+				channel_address_table.append(len(output_stream))
 
-			for pattern_idx in position:
-				output_stream += struct.pack("<Hbx", 
-					track_data["pattern_pointers"][pattern_idx[0]],
-					pattern_idx[1]
-					)
+				for pattern_idx in position:
+					output_stream += struct.pack("<Hbx", 
+						track_data["pattern_pointers"][pattern_idx[0]],
+						pattern_idx[1]
+						)
 
-			pos_idx += 1
+				pos_idx += 1
 
-		#now get the address of the current song's properties
+			#now get the address of the current song's properties
+			song_pointers.append(len(output_stream))
+			packed_properties = song["songdata"].properties.pack_properties()
+
+
+			output_stream += packed_properties["song_properties"]
+			output_stream += struct.pack('<3L',
+				sequence_pointer,
+				instrument_bank_pointer,
+				wave_bank_pointer
+				)
+			output_stream += packed_properties["mixing_rates_&_fx"]
+
+
+			channel_address_table_bytes = b''
+
+			if len(channel_address_table) > 42:
+				#this should not happen
+				raise Exception("Can't fit the following channel addresses into a 42 dword array")
+
+			for address in channel_address_table:
+				channel_address_table_bytes += address.to_bytes(4, byteorder='little', signed=False)
+
+			while len(channel_address_table_bytes) != 0xa8:
+				channel_address_table_bytes += b'\x00'*4
+
+			output_stream += channel_address_table_bytes
+
+			offset = 4
+			for pointer in song_pointers:
+				output_stream[offset:offset+4] = pointer.to_bytes(4, byteorder='little')
+				offset += 4
+
+	else:
+
 		song_pointers.append(len(output_stream))
-		packed_properties = song["songdata"].properties.pack_properties()
-
-
-		output_stream += packed_properties["song_properties"]
-		output_stream += struct.pack('<3L',
-			sequence_pointer,
-			instrument_bank_pointer,
-			wave_bank_pointer
-			)
-		output_stream += packed_properties["mixing_rates_&_fx"]
-
-
-		channel_address_table_bytes = b''
-
-		if len(channel_address_table) > 42:
-			#this should not happen
-			raise Exception("Can't fit the following channel addresses into a 42 dword array")
-
-		for address in channel_address_table:
-			channel_address_table_bytes += address.to_bytes(4, byteorder='little', signed=False)
-
-		while len(channel_address_table_bytes) != 0xa8:
-			channel_address_table_bytes += b'\x00'*4
-
-		output_stream += channel_address_table_bytes
+		output_stream += b'\x00'*(4*4)
+		output_stream += struct.pack('<2L', instrument_bank_pointer, wave_bank_pointer)
+		output_stream += b'\x00'*(58*4)
 
 		offset = 4
 		for pointer in song_pointers:
 			output_stream[offset:offset+4] = pointer.to_bytes(4, byteorder='little')
-			offset += 4
+			offset += 4		
 
 	return output_stream
-
-
-def save_GAX_file(gax_module):
-	'''
-	Saves a shinen_gax GAX object into a .gax_project file
-	'''
-	return 0
-
-
-def load_GAX_file(gax_module):
-	'''
-	Loads a shinen_gax GAX object from a .gax_project file
-	'''
-	return 0	
 
 
 def get_GAX_version(rom):
