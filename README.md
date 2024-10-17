@@ -9,10 +9,9 @@ Since this is a complete rewrite, some things in the original repo (i.e XM to GA
 - Gaxripper (v2) - A command line tool to rip and reconstruct GAX Sound Engine music data from Game Boy Advance ROMs.  
   This tool, like the GAX library script itself, is meant for GAX Sound Engine v3.05+, but support for anything below is flaky at best.
 
-- Waveform dumper - Allows one to dump sample data (internally referred to as waveforms) from .nax/.o files.  
-  For right now these are saved as .raw 8-bit unsigned files, not .wav or any typical audio format.
+- Waveform dumper - Allows one to dump waveform data from GAX blobs into .wav files.
 
-- Furnace clipboard converter - This converts the GAX pattern data in a .nax/.o file into the clipboard format used by tildearrow's [Furnace]. It was developed for an old version of this library, so things may work improperly.
+- Furnace clipboard converter - This converts the GAX pattern data in a .gax/.o file into the clipboard format used by tildearrow's [Furnace]. It was developed for an old version of this library, so things may work improperly.
 
 - Header reconstructor - This decompiles/reconstructs a C/C++ header file (music.h) from the GAX music data in a Game Boy Advance ROM. This isn't really useful right now since there's no ELF object recompiler for either the music or FX data (yet).
 
@@ -23,7 +22,7 @@ Since this is a complete rewrite, some things in the original repo (i.e XM to GA
 - Implement .ELF file reconstruction for GBA decompilation projects.
 
 ## In progress:
-- A tracker / sound editor for the GAX format implemented with Pygame and MyreMylar's [pygame_gui]
+- A tracker / sound editor for the GAX format implemented with pygame-ce, pyaudio and MyreMylar's [pygame_gui]
 - An accurate replayer engine for the GAX format, allowing for high-quality listening to tracks. GAX playback on the GBA is used as reference to gauge accuracy.
 
 
