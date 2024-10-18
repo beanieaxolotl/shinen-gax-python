@@ -11,7 +11,7 @@ Since this is a complete rewrite, some things in the original repo (i.e XM to GA
 
 - Waveform dumper - Allows one to dump waveform data from GAX blobs into .wav files.
 
-- Furnace clipboard converter - This converts the GAX pattern data in a .gax/.o file into the clipboard format used by tildearrow's [Furnace]. It was developed for an old version of this library, so things may work improperly.
+- Furnace clipboard converter - This converts the GAX pattern data in a .gax/.o file into the clipboard format used by tildearrow's [Furnace].
 
 - Header reconstructor - This decompiles/reconstructs a C/C++ header file (music.h) from the GAX music data in a Game Boy Advance ROM. This isn't really useful right now since there's no ELF object recompiler for either the music or FX data (yet).
 
