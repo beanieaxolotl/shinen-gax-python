@@ -4,7 +4,7 @@
 |Feature                         |Accuracy                                                                           |
 |--------------------------------|-----------------------------------------------------------------------------------|
 |Note off                        |95% - Note offs are affected by speed modulation when they shouldn't be            |
-|Wave parameters                 |0% - Iridion II relies on the wave parameters being accurate                       |
+|Wave parameters                 |50% - Unpacking of wave parameter data is slightly inaccurate                      |
 |Vibrato                         |66% - Vibrato depth is inaccurate (it is either too deep or shallow)               |
 |Perf list handling              |50% - One-row perf lists are handled improperly (cases - the Madagascar GBA games) |
 
