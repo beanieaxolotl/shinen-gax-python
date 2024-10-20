@@ -373,7 +373,7 @@ class channel:
 			#clamping and looping
 			if self.perf_row_volume > 255:
 				self.perf_row_volume = 255
-			elif self.perf_row_volume > 0:
+			elif self.perf_row_volume < 0:
 				self.perf_row_volume = 0
 			
 			self.perf_row_idx += 1
@@ -382,8 +382,6 @@ class channel:
 				self.perf_row_idx -= 1
 
 			#effect
-
-			self.perf_row_volume = 255
 
 			for column in cur_perf_row["effect"]:
 
@@ -419,7 +417,7 @@ class channel:
 
 				if fx_column[0] == gax.perf_row_effect.set_speed:
 					self.perf_row_speed = fx_column[1]
-
+					
 
 		#slide functions
 		self.perf_pitch += self.perf_note_slide_amount # the pitch of the note (affected by perf list porta effects)
@@ -499,7 +497,6 @@ class channel:
 				self.perf_row_idx = 0
 				self.perf_row_speed = self.instrument_data.perf_list["perf_row_speed"]
 				self.perf_row_buffer = self.instrument_data.perf_list["perf_list_data"]
-				self.perf_row_volume = 255
 				self.perf_row_timer = 0
 
 				self.is_fixed = False

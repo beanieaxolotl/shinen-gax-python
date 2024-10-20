@@ -29,7 +29,7 @@
 |0x06     |Delay row jump                  |untested                                 |
 |0x0A     |Volume slide up                 |untested                                 |
 |0x0B     |Volume slide down               |untested                                 |
-|0x0C     |Set volume                      |50%, volume erroneously resets every row |
+|0x0C     |Set volume                      |100%                                     |
 |0x0F     |Set speed                       |100%                                     |
 
 ### Effects/commands
