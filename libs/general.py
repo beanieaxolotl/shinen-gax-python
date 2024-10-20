@@ -16,3 +16,6 @@ def get_period(note):
 
 def get_freq(period):
 	return 8363 * pow(2, (4608 - period) / 768)
+	
+def sign_flip(sample):
+	return bytes((i+128)%256 for i in sample)
