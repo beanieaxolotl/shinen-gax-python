@@ -77,10 +77,10 @@ def dump_step_data(step_cmd, transpose=0):
 		# note + effect
 
 		if step_cmd.effect_type == gax.step_effect.set_volume:
-			return gax.semitone_to_note(step_cmd.semitone+transpose) + '{:0>2}'.format(f'{step_cmd.instrument:X}') + effect_str + '....|'
+			#furnace has no set volume commands as there is already a volume column that is used for that
+			return "{}{:0>2}{}....|".format(gax.semitone_to_note(step_cmd.semitone+transpose), f'{step_cmd.instrument:X}', effect_str)
 		else:
-			return gax.semitone_to_note(step_cmd.semitone+transpose) + '{:0>2}'.format(f'{step_cmd.instrument:X}') + '..' + effect_str + '|'
-
+			return "{}{:0>2}..{}|".format(gax.semitone_to_note(step_cmd.semitone+transpose), f'{step_cmd.instrument:X}', effect_str)
 
 
 with open(gax_path, "rb") as f:
