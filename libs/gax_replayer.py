@@ -477,6 +477,7 @@ class channel:
 				self.timer = 0 #reset timer
 				self.instrument_data = instrument_set[instr_idx] #get the required data
 				self.is_active = True #activate the instrument
+				self.perf_row_volume = 255
 
 			self.old_semitone = self.semitone
 			self.semitone = semitone
