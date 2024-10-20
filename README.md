@@ -23,7 +23,7 @@ Since this is a complete rewrite, some things in the original repo (i.e XM to GA
 
 ## In progress:
 - A tracker / sound editor for the GAX format implemented with pygame-ce, pyaudio and MyreMylar's [pygame_gui]
-- An accurate replayer engine for the GAX format, allowing for high-quality listening to tracks. GAX playback on the GBA is used as reference to gauge accuracy. There are a few bugs regarding accuracy, but most tracks that I have tried play close to perfect, aside from vibrato and tone portamento being a bit imperfect.
+- An accurate replayer engine for the GAX format, allowing for high-quality listening to tracks. GAX playback on the GBA is used as reference to gauge accuracy. There are a few bugs regarding accuracy, but most tracks that I have tried play close to perfect, aside from vibrato and tone portamento being a bit imperfect. I have not yet been able to get replayer playback functions into a library as all attempts (at least for me) have failed, so setting it up will be a hassle, sorry.
 
 
 Credits:
