@@ -1,6 +1,6 @@
-from libraries.shinen_gax import *
-from libraries.gax_replayer import channel, replayer
-from libraries.general import sign_flip
+from libs.shinen_gax import *
+from libs.gax_replayer import channel, replayer
+from libs.general import sign_flip
 import pyaudio
 import os
 import wave
@@ -24,8 +24,7 @@ def init_GAX_song(idx=0):
 	global mixing_rate
 	global stream
 
-	gax_replayer = replayer(gax_obj, song_idx = idx,
-							allocate_fxch=False)
+	gax_replayer = replayer(gax_obj, song_idx = idx, allocate_fxch=False)
 
 	if hqx_render:
 		mixing_rate = 48000
