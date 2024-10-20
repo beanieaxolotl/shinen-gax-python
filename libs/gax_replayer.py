@@ -116,6 +116,12 @@ class channel:
 		self.output_buffer = list()
 
 
+	def get_wave_map(self):
+		#one way to work around not having empty slots in the GAX object
+		wave_slot_map = self.instrument_data.header['wave_slots']
+		return list(self.instrument_data.wave_params[wave_slot_map.index(i)-1] if i != 0 else None for i in wave_slot_map)
+
+
 	def tick_volenv(self):
 
 		if len(self.volenv_buffer) > 1: #only read in volenv if there is any data
@@ -360,7 +366,7 @@ class channel:
 				try:
 					self.wave_params = self.instrument_data.wave_params[cur_perf_row["wave_slot_id"] - 1]	
 				except:
-					raise Exception('cannot index nonexistent wave param!')
+					pass
 
 				if len(self.perf_row_buffer) > 1: #prevent buzzing in melodic instruments
 					if math.ceil(self.old_perf_semitone) != self.perf_semitone:
@@ -417,7 +423,7 @@ class channel:
 
 				if fx_column[0] == gax.perf_row_effect.set_speed:
 					self.perf_row_speed = fx_column[1]
-					
+
 
 		#slide functions
 		self.perf_pitch += self.perf_note_slide_amount # the pitch of the note (affected by perf list porta effects)
@@ -443,12 +449,12 @@ class channel:
 
 			if self.timer == 0 and self.volenv_has_looped == False:
 				#start from defined wave position
+				wave_map = self.get_wave_map()
 				try:
-					self.wave_position = self.instrument_data.wave_params[
+					self.wave_position = wave_map[
 						self.perf_row_buffer[self.perf_row_idx]["wave_slot_id"] - 1
 					]["start_position"]
 				except:
-					print('> could not get start position from nonexistant wave param!')
 					self.wave_position = 0 #correct if possible
 
 			self.tick_perf_list(wave_bank)
@@ -538,8 +544,11 @@ class channel:
 
 
 				#load the necessary wave params
-				self.wave_params = self.instrument_data.wave_params[
-								   self.perf_row_buffer[self.perf_row_idx]["wave_slot_id"] - 1]
+				wave_map = self.get_wave_map()
+				try:
+					self.wave_params = wave_map[self.perf_row_buffer[self.perf_row_idx]["wave_slot_id"] - 1]
+				except:
+					pass #don't attempt to read an empty wave parameter
 
 
 def get_patterns_at_idx(song_data, idx):
