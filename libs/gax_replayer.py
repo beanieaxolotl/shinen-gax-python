@@ -430,17 +430,14 @@ class channel:
 		self.perf_semitone = self.perf_pitch / 32 # the "normalized" semitone
 		self.perf_row_volume += self.perf_vol_slide_amount
 
-		if self.perf_row_speed == 0: # this way prevents a division by zero.
-			self.perf_row_idx = 0    # fake a speed of 0 by setting the perf row ID to 0 constantly
-			tick_self()
-
 		if self.perf_row_speed != 0:
 			if self.perf_row_timer % self.perf_row_speed == 0:
 				tick_self()
 
-
 		if len(self.perf_row_buffer) > 1:
 			self.perf_row_timer += 1
+		else:
+			self.perf_row_speed = 0
 
 
 	def tick(self, wave_bank, stream, mixing_rate = 15769, fps=60, gain=3):
