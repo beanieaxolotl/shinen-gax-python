@@ -17,6 +17,8 @@ Since this is a complete rewrite, some things in the original repo (i.e XM to GA
 
 - GAX library detection - Detects the GAX Sound Engine library (+ functions from libgax.a) in a Game Boy Advance ROM.
 
+- GAX song renderer - Renders a specified track from a GAX blob (.gax), with the option of changing the number of loops and outputting the track at 48khz (DVD quality).
+
 ## To do:
 - Proper support for earlier revisions of GAX v3, GAX v2 and v1 (if possible)
 - Implement .ELF file reconstruction for GBA decompilation projects.
