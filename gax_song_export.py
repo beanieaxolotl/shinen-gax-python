@@ -53,7 +53,11 @@ def setup_GAX(mus_path):
 	with open(mus_path, "rb") as f:
 
 		gax_file = f.read()
-		gax_obj = unpack_GAX_file(gax_file)
+		try:
+			gax_obj = unpack_GAX_file(gax_file)
+		except:
+			#addresses the error message in #16 ~ "Song Export Not currently functioning..."
+			raise Exception("Could not unpack {} as the program couldn't detect it as a .gax file".format(os.path.basename(music_path))) from None
 		del gax_file
 
 def gaxTitleToWindowsNT(song_title):
