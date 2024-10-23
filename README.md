@@ -7,7 +7,7 @@ Since this is a complete rewrite, some things in the original repo (i.e XM to GA
 
 ## Tools:
 - Gaxripper (v2) - A command line tool to rip and reconstruct GAX Sound Engine music data from Game Boy Advance ROMs.  
-  This tool, like the GAX library script itself, is meant for GAX Sound Engine v3.05+, but support for anything below is flaky at best.
+  This tool, like the GAX library script itself, is meant for GAX Sound Engine v3.05+, but support for anything below is flaky at best. This program creates the .gax files that are used by a few scripts in this repo.
 
 - Waveform dumper - Allows one to dump waveform data from GAX blobs into .wav files.
 
