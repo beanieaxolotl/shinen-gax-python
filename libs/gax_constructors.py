@@ -1,7 +1,7 @@
-from gax_enums import (
+from .gax_enums import (
 	step_type, perf_row_effect, step_effect
 )
-import shinen_gax as gax
+from . import shinen_gax as gax
 
 #gax dictionary object return functions
 def perf_row():

@@ -1,10 +1,10 @@
-import shinen_gax as gax
+from . import shinen_gax as gax
 import math
 import struct
 
-from general import get_period, get_freq
-from gax_constants import sine_table
-from gax_constructors import wave_param
+from .general import get_period, get_freq
+from .gax_constants import sine_table
+from .gax_constructors import wave_param
 
 
 '''

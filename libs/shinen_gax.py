@@ -1,13 +1,13 @@
 import struct
 import re
-import general
+from . import general
 import math
-import gba
+from . import gba
 
-from gax_enums import (
+from .gax_enums import (
 	step_type, perf_row_effect, step_effect
 )
-from gax_constants import (
+from .gax_constants import (
 	mixing_rates, note_names, max_channels, min_channels, max_fx_channels, libgax_consts
 )
 
