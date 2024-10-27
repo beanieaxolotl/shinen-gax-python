@@ -122,7 +122,18 @@ class channel:
 		return list(self.instrument_data.wave_params[wave_slot_map.index(i)-1] if i != 0 else None for i in wave_slot_map)
 
 
+	def calc_volenv_lerp(self):
+		try:
+			volenv_a = self.volenv_buffer[self.volenv_idx]
+			volenv_b = self.volenv_buffer[self.volenv_idx-1]
+			self.volenv_lerp = ((volenv_b[1]-volenv_a[1])/(volenv_b[0]-volenv_a[0]))
+		except:
+			self.volenv_lerp = 0
+
+
 	def tick_volenv(self):
+
+		#to do: Iridion II - Instrument #40's volume envelope is slightly faster than actual hardware
 
 		if len(self.volenv_buffer) > 1: #only read in volenv if there is any data
 
@@ -135,9 +146,9 @@ class channel:
 					  
 				#if our timer matches the current envelope point's time (X),
 				#we increment the volenv_idx variable by 1 and set the appropriate volume
-				self.volenv_cur_vol = self.volenv_buffer[self.volenv_idx][1]
-
+				
 				if not self.volenv_pause:
+					self.volenv_cur_vol = self.volenv_buffer[self.volenv_idx][1]
 					self.volenv_idx += 1
 				
 				if not self.volenv_loop: 
@@ -147,10 +158,8 @@ class channel:
 						self.volenv_end = True
 						self.is_active = False
 						
-				#envelope loop controls (unconfirmed behavior)
 				if self.volenv_loop: 
 					if self.volenv_idx > self.instrument_data.volume_envelope["loop_end"]:
-						#to do: Iridion II - Instrument #40's volume envelope is slightly faster than actual hardware
 						self.volenv_idx = self.instrument_data.volume_envelope["loop_start"]
 						self.timer = self.volenv_buffer[self.volenv_idx][0] #extremely shit solution but it works
 						self.volenv_has_looped = True
@@ -169,20 +178,17 @@ class channel:
 
 				#prevent the sample from getting louder and scaring the elderly
 				if not self.volenv_pause:
-					if self.volenv_buffer[self.volenv_idx][0] != (self.volenv_pause_point):
-						try:
-							volenv_a = self.volenv_buffer[self.volenv_idx]
-							volenv_b = self.volenv_buffer[self.volenv_idx-1]
-							self.volenv_lerp = ((volenv_b[1]-volenv_a[1])/(volenv_b[0]-volenv_a[0]))
-						except:
-							self.volenv_lerp = 0
+					self.calc_volenv_lerp()
 
 
 			#sustain point handler
 
-			if self.volenv_buffer[self.volenv_idx][0] == (self.volenv_pause_point): #when we reach the sustain point
+			#note: if the sustain point is directly at the start (i.e Finding Nemo, SpongeBob), stop immediately
+
+			if self.volenv_idx-1 == self.volenv_pause_point: #when we reach the sustain point
 				self.volenv_pause = True
-				self.volenv_lerp = 0
+				self.volenv_lerp = 0 # *stop* on the sustain point
+
 
 			#sustain / pause handling
 
@@ -193,10 +199,11 @@ class channel:
 				if self.volenv_note_off == True:
 					#reset to where we were before the sustain pause
 					self.volenv_pause = False
-					self.volenv_idx = self.instrument_data.volume_envelope["sustain_point"]
-					self.timer = self.volenv_pause_point
+					self.volenv_idx = self.volenv_pause_point
+					self.timer = self.volenv_buffer[self.volenv_pause_point][0]
 					self.volenv_pause_point = None
 					self.volenv_note_off = False
+
 
 
 	def tick_audio(self, mix_rate, wave_bank, stream, fps=60, gain=3, debug=False):
@@ -205,10 +212,9 @@ class channel:
 
 		'''
 		current bugs:
-		> envelope pause timing / note off timing is inconsistent during speed modulation (cases - Jazz Jackrabbit, SpongeBob: Lights Camera Pants)
+		> envelope pause timing / note off timing is inconsistent during speed modulation? (cases - Jazz Jackrabbit, SpongeBob: Lights Camera Pants)
 		> envelope looping is slightly faster (case - Iridion II ~ intro BGM)
-		> vibrato depth calculation is incorrect
-		> we don't need to reset the perf volume, yet we do anyways (cases - Camp Lazlo)
+		> vibrato depth calculation is incorrect (cases - Camp Lazlo)
 		'''
 
 		self.output_buffer = list()
@@ -333,9 +339,7 @@ class channel:
 			if self.is_vibrato:
 				self.vibrato_subtimer += 1*self.vibrato_speed
 				try:
-					# the magic number only works for instrument #128 in the spongebob movie
-					# pls figure this out
-					self.vibrato_pitch = (sine_table[self.vibrato_subtimer%64]) * self.vibrato_depth/200
+					self.vibrato_pitch = ((sine_table[self.vibrato_subtimer%64])/127) * (self.vibrato_depth/2.5)
 				except:
 					self.vibrato_pitch = 0
 
@@ -443,6 +447,8 @@ class channel:
 			self.perf_row_speed = 0
 
 
+
+
 	def tick(self, wave_bank, stream, mixing_rate = 15769, fps=60, gain=3):
 
 		if self.instrument_data != None:
@@ -470,7 +476,9 @@ class channel:
 		#todo: clamp the envelope value into bounds
 		
 
-	def init_instr(self, instrument_set, instr_idx=1, semitone=0x31):
+	def init_instr(self, instrument_set, instr_idx=1, semitone=0x31, delay=0):
+
+		#to-do: figure out how an instrument actually turns on so i can delay this
 
 		if instr_idx < len(instrument_set):
 
@@ -479,10 +487,11 @@ class channel:
 			self.volenv_note_off = False
 			
 			if instr_idx not in [0, None]:
+
 				self.volenv_pause = False
 				self.timer = 0 #reset timer
 				self.instrument_data = instrument_set[instr_idx] #get the required data
-				self.is_active = True #activate the instrument
+				self.is_active = True #let the replayer know this channel is active
 				self.perf_row_volume = 255
 
 			self.old_semitone = self.semitone
@@ -515,15 +524,9 @@ class channel:
 				self.volenv_end = False
 
 				try:
-					self.volenv_pause_point = self.volenv_buffer[self.instrument_data.volume_envelope["sustain_point"]][0]
+					self.volenv_pause_point = self.instrument_data.volume_envelope["sustain_point"]
 				except:
 					self.volenv_pause_point = None
-
-
-				#further initialization steps
-
-				if self.instrument_data.volume_envelope["sustain_point"] == 0: #this feels kind of hacky :/
-					self.volenv_pause = True #if the sustain point is directly at the start (i.e Finding Nemo, SpongeBob)
 
 				vibrato_params = self.instrument_data.header['vibrato_params']
 
@@ -605,6 +608,8 @@ class replayer():
 			self.channels = [channel() for n in range(self.num_channels+self.num_fx_channels)]
 
 		self.output_buffer = ''
+
+
 
 
 	def read_step_at_ch(self, channel):
@@ -692,9 +697,8 @@ class replayer():
 							self.skip = True
 							#the param is ignored here
 
-						case 0xE:
-							if step_effect_param >> 4 == 0xD:
-								print('>> unimplemented command! |', step_data.effect_type)
+						case 0xE: #note delay
+							print('>> unimplemented command! |', step_data.effect_type)
 
 						case 0xF: #set speed
 							self.speed = [step_effect_param]*2
