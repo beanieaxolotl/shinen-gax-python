@@ -441,9 +441,6 @@ class channel:
 		if self.perf_row_speed != 0:
 			if self.perf_row_timer % self.perf_row_speed == 0:
 				tick_self()
-				
-		if self.perf_row_speed == 0:
-			tick_self()
 
 		if len(self.perf_row_buffer) > 1:
 			self.perf_row_timer += 1
