@@ -12,7 +12,7 @@ To do:
 
 > mixing volume (85% accurate)
 > touch up tone portamento (95% accurate)
-> sustain point (95% accurate)
+> sustain point (100% accurate)
 
 > vibrato support (33.3% accurate)
 	> depth (figure out proper scaling)
@@ -22,6 +22,10 @@ To do:
 	> unless i figure out how this works, this is not implemented
 	> (use cases: Shin'en Multimedia intro jingle ~ Iridion II)
 '''
+
+def get_patterns_at_idx(song_data, idx):
+	return(list(i[idx] for i in song_data.get_order_list()))
+
 
 class channel:
 	
@@ -554,10 +558,6 @@ class channel:
 					pass #don't attempt to read an empty wave parameter
 
 
-def get_patterns_at_idx(song_data, idx):
-	return(list(i[idx] for i in song_data.get_order_list()))
-
-
 class replayer():
 
 	'''
@@ -608,8 +608,6 @@ class replayer():
 			self.channels = [channel() for n in range(self.num_channels+self.num_fx_channels)]
 
 		self.output_buffer = ''
-
-
 
 
 	def read_step_at_ch(self, channel):
