@@ -13,6 +13,7 @@ To do:
 > mixing volume (85% accurate)
 > touch up tone portamento (95% accurate)
 > sustain point (100% accurate)
+> looping envelopes (100% accurate?)
 
 > vibrato support (33.3% accurate)
 	> depth (figure out proper scaling)
@@ -22,6 +23,7 @@ To do:
 	> unless i figure out how this works, this is not implemented
 	> (use cases: Shin'en Multimedia intro jingle ~ Iridion II)
 '''
+
 
 def get_patterns_at_idx(song_data, idx):
 	return(list(i[idx] for i in song_data.get_order_list()))
@@ -104,6 +106,7 @@ class channel:
 		self.volenv_pause = False #so the sustain point works properly
 		self.volenv_pause_point = None
 		self.volenv_note_off = False
+		self.volenv_turning_off = False
 
 		self.volenv_loop = False
 		self.volenv_has_looped = False
@@ -141,9 +144,12 @@ class channel:
 
 		if len(self.volenv_buffer) > 1: #only read in volenv if there is any data
 
-			self.volenv_loop = (self.instrument_data.volume_envelope["loop_start"] != None
-								and self.instrument_data.volume_envelope["loop_end"] != None)
-								#detect when it's appropriate to loop our volume envelope
+			if not self.volenv_turning_off:
+				self.volenv_loop = (self.instrument_data.volume_envelope["loop_start"] != None
+									and self.instrument_data.volume_envelope["loop_end"] != None)
+									#detect when it's appropriate to loop our volume envelope
+			else:
+				self.volenv_loop = False
 
 			if self.timer == self.volenv_buffer[self.volenv_idx][0]:
 				self.volenv_has_looped = False
@@ -179,15 +185,15 @@ class channel:
 		if len(self.volenv_buffer) > 1:
 
 			if not self.volenv_end:
-
 				#prevent the sample from getting louder and scaring the elderly
 				if not self.volenv_pause:
 					self.calc_volenv_lerp()
+			else:
+				#fixes instrument #24 in SpongeBob SquarePants: Battle for Bikini Bottom
+				self.volenv_turning_off = False
 
 
 			#sustain point handler
-
-			#note: if the sustain point is directly at the start (i.e Finding Nemo, SpongeBob), stop immediately
 
 			if self.volenv_idx-1 == self.volenv_pause_point: #when we reach the sustain point
 				self.volenv_pause = True
@@ -207,6 +213,7 @@ class channel:
 					self.timer = self.volenv_buffer[self.volenv_pause_point][0]
 					self.volenv_pause_point = None
 					self.volenv_note_off = False
+					self.volenv_turning_off = True
 
 
 
@@ -439,7 +446,11 @@ class channel:
 		self.perf_row_volume += self.perf_vol_slide_amount
 
 		if self.perf_row_speed != 0:
+			#only tick the instrument if the row speed is not 0
 			if self.perf_row_timer % self.perf_row_speed == 0:
+				#fixes instrument 48 in Iridion II (prototype) ~ "NEW GAME"
+				self.perf_note_slide_amount = 0 #don't apply pitch slides if there are none
+				self.perf_vol_slide_amount = 0
 				tick_self()
 
 		if len(self.perf_row_buffer) > 1:
@@ -486,6 +497,7 @@ class channel:
 			self.volenv_timer = 0
 			self.is_tone_porta = False
 			self.volenv_note_off = False
+			self.volenv_turning_off = False
 			
 			if instr_idx not in [0, None]:
 
@@ -605,6 +617,8 @@ class replayer():
 			self.channels = [channel() for n in range(self.num_channels+self.num_fx_channels)]
 
 		self.output_buffer = ''
+
+
 
 
 	def read_step_at_ch(self, channel):
