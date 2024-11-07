@@ -497,10 +497,7 @@ class channel:
 			if replayer.speed[0] >= self.delay_tick_count:
 				if self.delay_timer >= self.delay_tick_count and not self.delay_finished:
 					step_data = replayer.cur_step_data[channel]
-					self.init_instr(instrument_set, 
-									instr_idx=step_data.instrument, 
-									semitone=replayer.channels[channel].target_semitone)
-
+					self.init_instr(instrument_set, instr_idx=step_data.instrument, semitone=replayer.channels[channel].target_semitone)
 					self.delay_finished = True
 		except:
 			pass
@@ -662,9 +659,7 @@ class replayer():
 					self.channels[channel].delay_finished = True
 
 				if step_data.effect_type != gax.step_effect(0xe):
-					self.channels[channel].init_instr(self.gax_data.instrument_set, 
-													 instr_idx=step_data.instrument, 
-													 semitone=self.channels[channel].target_semitone)
+					self.channels[channel].init_instr(self.gax_data.instrument_set, instr_idx=step_data.instrument, semitone=self.channels[channel].target_semitone)
 
 				#if a set volume command is not present:
 
