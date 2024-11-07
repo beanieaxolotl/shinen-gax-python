@@ -36,7 +36,9 @@ class channel:
 		self.timer = 0
 
 		#note delay
-		self.tick_delay = 0
+		self.delay_tick_count = 0
+		self.delay_timer = 0
+		self.delay_finished = True
 
 		#note pitch (from step data)
 		self.semitone = 0 # the semitone straight from the GAX song data
@@ -220,9 +222,6 @@ class channel:
 			#fixes a few tracks in Rayman - Raving Rabbids (U)
 			self.volenv_cur_vol = 0
 			self.volenv_lerp = 0
-
-
-
 
 
 	def tick_audio(self, mix_rate, wave_bank, stream, fps=60, gain=3, debug=False):
@@ -465,9 +464,8 @@ class channel:
 			self.perf_row_speed = 0
 
 
-
-
-	def tick(self, wave_bank, stream, mixing_rate = 15769, fps=60, gain=3):
+	def tick(self, channel, replayer, instrument_set, 
+		wave_bank, stream, mixing_rate = 15769, fps=60, gain=3):
 
 		if self.instrument_data != None:
 
@@ -488,15 +486,30 @@ class channel:
 			#render silence
 			self.output_buffer = [0]*int(mixing_rate/math.ceil(fps))
 		
-		self.timer += 1 #increment the timer at the end so there exists a timer value of 0
-		self.volenv_cur_vol += self.volenv_lerp
+		
+		if not self.delay_finished:
+			self.delay_timer += 1
 
-		#todo: clamp the envelope value into bounds
+		self.timer += 1 #increment the timer at the end so there exists a timer value of 0
+
+		#hackish handler for note delay
+		try:
+			if replayer.speed[0] >= self.delay_tick_count:
+				if self.delay_timer >= self.delay_tick_count and not self.delay_finished:
+					step_data = replayer.cur_step_data[channel]
+					self.init_instr(instrument_set, 
+									instr_idx=step_data.instrument, 
+									semitone=replayer.channels[channel].target_semitone)
+
+					self.delay_finished = True
+		except:
+			pass
+
+		self.volenv_cur_vol += self.volenv_lerp
 		
 
-	def init_instr(self, instrument_set, instr_idx=1, semitone=0x31, delay=0):
+	def init_instr(self, instrument_set, instr_idx=1, semitone=0x31):
 
-		#to-do: figure out how an instrument actually turns on so i can delay this
 
 		if instr_idx < len(instrument_set):
 
@@ -640,9 +653,18 @@ class replayer():
 
 			if step_data.semitone not in [None, gax.step_type(0x1)]:
 				self.channels[channel].target_semitone = step_data.semitone+self.cur_pat_data[channel][1]
-				self.channels[channel].init_instr(self.gax_data.instrument_set, 
-												 instr_idx=step_data.instrument, 
-												 semitone=step_data.semitone+self.cur_pat_data[channel][1])
+
+				if step_data.effect_type == gax.step_effect(0xe):
+					self.channels[channel].delay_tick_count = step_data.effect_param
+					self.channels[channel].delay_timer = 0
+					self.channels[channel].delay_finished = False
+				else:
+					self.channels[channel].delay_finished = True
+
+				if step_data.effect_type != gax.step_effect(0xe):
+					self.channels[channel].init_instr(self.gax_data.instrument_set, 
+													 instr_idx=step_data.instrument, 
+													 semitone=self.channels[channel].target_semitone)
 
 				#if a set volume command is not present:
 
@@ -711,9 +733,6 @@ class replayer():
 						case 0xD: #break pattern
 							self.skip = True
 							#the param is ignored here
-
-						case 0xE: #note delay
-							print('>> unimplemented command! | {}, {}'.format(step_data.effect_type, step_data.effect_param))
 
 						case 0xF: #set speed
 							self.speed = [step_effect_param]*2

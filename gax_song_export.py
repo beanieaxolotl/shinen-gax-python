@@ -41,8 +41,8 @@ def tick_GAX():
 	global output_buffer
 
 	for i in range(gax_replayer.num_channels):
-		gax_replayer.channels[i].tick(gax_obj.wave_set.wave_bank, stream, mixing_rate, fps,
-									  gain=gax_replayer.mix_amp/100)
+		gax_replayer.channels[i].tick(i,gax_replayer,gax_obj.instrument_set, gax_obj.wave_set.wave_bank, stream, mixing_rate, fps, gain=gax_replayer.mix_amp/100)
+
 	output_buffer += gax_replayer.tick(stream, debug=True)
 
 
