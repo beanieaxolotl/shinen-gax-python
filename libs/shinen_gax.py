@@ -38,9 +38,9 @@ class step_command:
 			effect_param = None
 
 		#correction of effect param for note delay command
-		if self.effect_type != None and type(effect_type) != int:
+		if self.effect_type != None and type(self.effect_type) != int:
 			if self.effect_type.value == 0xe:
-				if self.effect_param > 15:
+				if self.effect_param > 0xf:
 					raise ValueError("Malformed note delay effect")
 				effect_param = self.effect_param + 0xd0	
 
@@ -81,7 +81,10 @@ def unpack_steps(data, offset, step_count):
 	def setEffectData(step, data, offset):
 
 		try:
-			step.effect_type = step_effect(data[offset])
+			if data[offset] == 0xe and data[offset+1] >> 4 != 0xd:
+				step.effect_type = data[offset]
+			else:
+				step.effect_type = step_effect(data[offset])
 		except:
 			step.effect_type = data[offset]
 
@@ -90,8 +93,7 @@ def unpack_steps(data, offset, step_count):
 		## note delay handler
 		if step.effect_type == step_effect(0xe):
 			step.effect_param &= 0x0f
-		if step.effect_type == 0xe and ((step.effect_param & 0xf0) != 0xd0):
-			raise ValueError('Note delay effect param is {0:#x} when it should be 0xd'.format(efx_param))
+
 
 	if general.get_bool_from_num(data[offset]) == True:
 		return [step_command() for n in range(step_count)] #create a new empty pattern instead of outputting a None object
@@ -234,7 +236,8 @@ class song_properties:
 
 	'''
 
-	def __init__(self, data, offset, is_gax_gba = False, unpack = True):
+	def __init__(self, data, offset, is_gax_gba = False, unpack = True, 
+				 step_count=64, channel_count=6):
 
 		if unpack:
 			props_struct = struct.unpack_from('<Bx4Hxx3L2HB', data, offset)
@@ -274,8 +277,8 @@ class song_properties:
 		
 		else:
 
-			self.channel_count = 6
-			self.step_count = 64 #confirmed by Harry Potter: Quidditch World Cup -> "" © Manfred Linzner
+			self.channel_count = channel_count
+			self.step_count = step_count #64 steps is confirmed by Harry Potter: Quidditch World Cup -> "" © Manfred Linzner
 			self.song_length = 1
 			self.restart_position = 0
 			self.song_volume = 256
@@ -335,9 +338,9 @@ class song_data:
 	'''
 
 
-	def __init__(self, data, offset, is_gax_gba = False, unpack = True):
+	def __init__(self, data, offset, is_gax_gba = False, unpack = True, step_count=64, channel_count=6):
 
-		self.properties = song_properties(data, offset, is_gax_gba, unpack)
+		self.properties = song_properties(data, offset, is_gax_gba, unpack, step_count, channel_count)
 
 		if unpack:
 
@@ -421,7 +424,7 @@ class song_data:
 			for i in range(self.properties.channel_count):
 				self.order_list.append([[i,0]])
 
-			for __ in range(self.properties.channel_count + 1):
+			for __ in range(self.properties.channel_count):
 				self.patterns.append([step_command() for n in range(self.properties.step_count)])
 
 
@@ -530,7 +533,10 @@ class wave_set:
 				if offset >= len(data) or offset >= end_offset:
 					break
 
-				wave_metadata = list(struct.unpack_from("<2L", data, offset) )
+				wave_metadata = list(struct.unpack_from("<2L", data, offset))
+				if wave_metadata[1] > offset:
+					break
+				
 				if is_gax_gba:
 					if wave_metadata[0] != 0: # don't attempt to turn a null address into a file offset
 						wave_metadata[0] = gba.from_rom_address(wave_metadata[0])
@@ -543,6 +549,7 @@ class wave_set:
 
 		else:
 			self.wave_bank = [b''] # sample #0 is always empty in GAX v3+
+
 
 
 class instrument:
@@ -667,7 +674,7 @@ class instrument:
 			perf_row = {
 				"note": 0,
 				"fixed": False,
-				"wave_slot_id": 0,
+				"wave_slot_id": 1,
 
 				"effect": [(0, perf_row_effect(0)), (0, perf_row_effect(0))]
 			}
@@ -695,7 +702,7 @@ class instrument:
 			}
 
 			self.perf_list = {
-				"perf_row_speed": 0,
+				"perf_row_speed": 1,
 				"perf_list_data": [perf_row]
 			}
 
@@ -1129,18 +1136,18 @@ def get_cppMusicHeader(gax_module, has_prefix = False):
 	return cpp_header
 
 
-def pack_GAX_file(gax_module, compile_object=False):
+def pack_GAX_file(gax_module, compile_object=False, blob_offset=0):
 	'''
 	Packs a shinen_gax GAX object into a GAX/NAX binary file
 
 	Options:
-		compile_object: If set, this attempts to convert the GAX object into a compiled ELF file, for use in decomp projects or similar.
+		compile_object: If set, this converts the GAX object into a binary blob w/o song pointers at the start.
 	'''
 
 	output_stream = bytearray()
 
 	if compile_object:
-		raise NotImplementedError("ELF conversion is incomplete")
+		pass
 
 	else:
 		#otherwise just create the NAX file header.
@@ -1150,7 +1157,6 @@ def pack_GAX_file(gax_module, compile_object=False):
 			song_count = 1
 
 		output_stream += b'GAX!' + (b'\x00\x00\x00\x00') * song_count
-
 
 
 	#some common-sense error handling
@@ -1173,16 +1179,16 @@ def pack_GAX_file(gax_module, compile_object=False):
 			nonlocal output_stream
 			nonlocal blank_instr_pointer
 
-			volenv_pointer = len(output_stream)
+			volenv_pointer = len(output_stream)+blob_offset
 			output_stream += packed_instr['volenv']
 
-			perflist_pointer = len(output_stream)
+			perflist_pointer = len(output_stream)+blob_offset
 			output_stream += packed_instr['perflist']
 
 			if idx > 0:
-				instrument_pointers.append(len(output_stream))
+				instrument_pointers.append(len(output_stream)+blob_offset)
 			else:
-				blank_instr_pointer = len(output_stream)
+				blank_instr_pointer = len(output_stream)+blob_offset
 				instrument_pointers.append(blank_instr_pointer)
 
 			output_stream += packed_instr['instrument'][0]
@@ -1195,7 +1201,7 @@ def pack_GAX_file(gax_module, compile_object=False):
 		packed_instrument = instrument.pack_instrument()
 
 		if instrument.header["is_null"] and idx == 0:
-			blank_instr_pointer = len(output_stream) #get pointer to blank instrument (so we can reuse it later)
+			blank_instr_pointer = len(output_stream)+blob_offset #get pointer to blank instrument (so we can reuse it later)
 
 		if instrument.header["is_null"] and idx > 0:
 			instrument_pointers.append(blank_instr_pointer) # reuse blank instr. pointer (fixes Trick Star, The SpongeBob SquarePants Movie[?])
@@ -1206,18 +1212,18 @@ def pack_GAX_file(gax_module, compile_object=False):
 
 
 	#create instrument pointer array
-	instrument_bank_pointer = len(output_stream) 
+	instrument_bank_pointer = len(output_stream)+blob_offset
 	for pointer in instrument_pointers:
 		output_stream += pointer.to_bytes(4, byteorder='little', signed=False)
 
 
 	#create waveform data
-	wave_bank_start_pointer = len(output_stream)
+	wave_bank_start_pointer = len(output_stream)+blob_offset
 	wave_pointers = list()
 
 	idx = 0
 	for waveform in gax_module.wave_set.wave_bank:
-		wave_pointers.append([len(output_stream), len(waveform)])
+		wave_pointers.append([len(output_stream)+blob_offset, len(waveform)])
 		if idx == 0:
 			output_stream += b'\x80'*2048 #generate null waveform
 		else:		
@@ -1225,12 +1231,12 @@ def pack_GAX_file(gax_module, compile_object=False):
 		idx += 1
 
 	#pad to nearest dword alignment
-	while general.is_dword_aligned(len(output_stream)) != True:
+	while general.is_dword_aligned(len(output_stream)+blob_offset) != True:
 		output_stream += b'\x00'
 
-	wave_bank_end_pointer = len(output_stream) #internally called "gaxSong_nullwaves"
+	wave_bank_end_pointer = len(output_stream)+blob_offset #internally called "gaxSong_nullwaves"
 	output_stream += struct.pack('<2L', wave_pointers[0][0], wave_pointers[0][1])
-	wave_bank_pointer = len(output_stream)
+	wave_bank_pointer = len(output_stream)+blob_offset
 
 	output_stream += struct.pack('<2L', wave_bank_end_pointer, 0)
 
@@ -1250,7 +1256,7 @@ def pack_GAX_file(gax_module, compile_object=False):
 
 		for song in gax_module.song_bank["songs"]:
 
-			sequence_pointer = len(output_stream)
+			sequence_pointer = len(output_stream)+blob_offset
 			track_data = song["songdata"].pack_song_data() # these are called "gaxSongXYZ_tracks"
 			exp_auth = (
 				'"' + song["songname"] + '" © ' + gax_module.get_auth()
@@ -1259,7 +1265,7 @@ def pack_GAX_file(gax_module, compile_object=False):
 
 			output_stream += track_data["pattern_data"]
 			output_stream += exp_auth
-			while general.is_dword_aligned(len(output_stream)) != True:
+			while general.is_dword_aligned(len(output_stream)+blob_offset) != True:
 				output_stream += b'\x00' #align the end of this data to the nearest dword
 
 			#create channel playlists (or positions)
@@ -1267,7 +1273,7 @@ def pack_GAX_file(gax_module, compile_object=False):
 			pos_idx = 0 #keep track of the current "position"
 			channel_address_table = list()
 			for position in song["songdata"].order_list:
-				channel_address_table.append(len(output_stream))
+				channel_address_table.append(len(output_stream)+blob_offset)
 
 				for pattern_idx in position:
 					output_stream += struct.pack("<Hbx", 
@@ -1305,10 +1311,11 @@ def pack_GAX_file(gax_module, compile_object=False):
 
 			output_stream += channel_address_table_bytes
 
-			offset = 4
-			for pointer in song_pointers:
-				output_stream[offset:offset+4] = pointer.to_bytes(4, byteorder='little')
-				offset += 4
+			if not compile_object:
+				offset = 4
+				for pointer in song_pointers:
+					output_stream[offset:offset+4] = pointer.to_bytes(4, byteorder='little')
+					offset += 4
 
 	else:
 
