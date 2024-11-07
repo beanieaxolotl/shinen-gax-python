@@ -227,8 +227,6 @@ class channel:
 
 	def tick_audio(self, mix_rate, wave_bank, stream, fps=60, gain=3, debug=False):
 
-		#replace these functions with the ones in general
-
 		'''
 		current bugs:
 		> envelope pause timing / note off timing is inconsistent during speed modulation (cases - Jazz Jackrabbit, SpongeBob: Lights Camera Pants)
