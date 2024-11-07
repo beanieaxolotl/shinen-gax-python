@@ -216,13 +216,23 @@ class channel:
 					self.volenv_turning_off = True
 
 
+		if self.volenv_pause_point == None and self.volenv_note_off:
+			#fixes a few tracks in Rayman - Raving Rabbids (U)
+			self.volenv_cur_vol = 0
+			self.volenv_lerp = 0
+
+
+
+
 
 	def tick_audio(self, mix_rate, wave_bank, stream, fps=60, gain=3, debug=False):
+
+		#replace these functions with the ones in general
 
 		'''
 		current bugs:
 		> envelope pause timing / note off timing is inconsistent during speed modulation (cases - Jazz Jackrabbit, SpongeBob: Lights Camera Pants)
-		> envelope looping is slightly faster (case - Iridion II ~ intro BGM)
+		> envelope looping is slightly faster (case - Iridion II)
 		> vibrato depth calculation is incorrect (cases - Camp Lazlo)
 		'''
 
@@ -705,7 +715,7 @@ class replayer():
 							#the param is ignored here
 
 						case 0xE: #note delay
-							print('>> unimplemented command! |', step_data.effect_type)
+							print('>> unimplemented command! | {}, {}'.format(step_data.effect_type, step_data.effect_param))
 
 						case 0xF: #set speed
 							self.speed = [step_effect_param]*2
