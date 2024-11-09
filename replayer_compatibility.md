@@ -15,7 +15,7 @@
 |Basic volume envelope handling  |100%                                                        |
 |Envelope looping                |50% - Slightly too fast, can sometimes break                |
 |Envelope sustain                |100%                                                        |
-|Envelope sustain + looping      |0% - Envelopes with both sustain and loop can't be stopped  |
+|Envelope sustain + looping      |100%                                                        |
 
 
 ### Perf. effects/commands
@@ -27,8 +27,8 @@
 |0x02     |Portamento down                 |100%                                     |
 |0x05     |Jump to given perf. row         |100%                                     |
 |0x06     |Delay row jump                  |untested                                 |
-|0x0A     |Volume slide up                 |untested                                 |
-|0x0B     |Volume slide down               |untested                                 |
+|0x0A     |Volume slide up                 |100%                                     |
+|0x0B     |Volume slide down               |100%                                     |
 |0x0C     |Set volume                      |100%                                     |
 |0x0F     |Set speed                       |100%                                     |
 
@@ -45,5 +45,5 @@
 |0x0B     |Volume slide down               |100%                                                |
 |0x0C     |Set volume                      |100%                                                |
 |0x0D     |Break pattern                   |100% - Param is ignored like the actual GAX         |
-|0xED     |Delay note                      |0% - This is ignored for right now                  |
+|0xED     |Delay note                      |100%                                                |
 |0x0F     |Set speed                       |100%                                                |
