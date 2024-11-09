@@ -702,8 +702,8 @@ class replayer():
 
 							self.channels[channel].tone_porta_strength = step_effect_param
 
-							new_semitone = step_data.semitone
-							if new_semitone == None:
+							new_semitone = self.channels[channel].semitone
+							if step_data.semitone == None:
 								new_semitone = 0
 								self.channels[channel].target_semitone = new_semitone
 
