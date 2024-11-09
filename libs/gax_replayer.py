@@ -701,10 +701,16 @@ class replayer():
 						case 0x3: #tone portamento
 
 							self.channels[channel].tone_porta_strength = step_effect_param
+
+							new_semitone = step_data.semitone
+							if new_semitone == None:
+								new_semitone = 0
+								self.channels[channel].target_semitone = new_semitone
+
 							#right now this behaves similar to XM's tone portamento, which is not how GAX does it
 							#the number of ticks should remain the same length, even during one-note sweeps
 							try:
-								lerp = self.channels[channel].semitone - self.channels[channel].old_semitone
+								lerp = new_semitone - self.channels[channel].old_semitone
 								self.channels[channel].tone_porta_lerp = (lerp / (step_effect_param*self.speed[0]))
 							except:
 								self.channels[channel].tone_porta_lerp = 0
