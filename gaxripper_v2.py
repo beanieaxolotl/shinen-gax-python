@@ -163,21 +163,21 @@ print("> Unpacking from ROM")
 gax_object = gax.unpackGAXFromROM(song_settings, gba_rom)
 print("> GAX data unpacked.\n")
 
-print("> Converting from GAX to NAX format")
+print("> Repacking into GAX binary blob format")
 NAX_obj = gax.pack_GAX_file(gax_object, compile_object=False)
 
 try:
 
 	if product_code != None:
-		output_name = product_code + " (Music).nax"
+		output_name = product_code + " (Music).gax"
 	else:
-		output_name = file_name + " (Music).nax"
+		output_name = file_name + " (Music).gax"
 
 	g = open(output_name, "wb")
 	g.write(NAX_obj)
 	g.close()
 
 except Exception as e:
-	print('Could not write .NAX file.')
+	print('Could not write .GAX file.')
 	raise e
 print(output_name, "saved!")
