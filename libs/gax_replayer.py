@@ -305,7 +305,6 @@ class channel:
 
 				if self.is_tone_porta:
 					if int(self.semitone) == self.target_semitone:
-						#now works in both directions!
 						self.tone_porta_lerp = 0
 						self.is_tone_porta = False
 						self.semitone = self.target_semitone
@@ -367,7 +366,9 @@ class channel:
 			#note
 			cur_perf_row = self.perf_row_buffer[self.perf_row_idx]
 			self.old_perf_semitone = self.perf_semitone # our previous semitone from the last tick/step
+			
 			if cur_perf_row["note"] not in [0, None]:
+				self.wave_position = self.wave_params["start_position"]
 				self.perf_semitone = cur_perf_row["note"] - 4 #apply note correction
 				self.perf_pitch = self.perf_semitone * 32 # set that as our perf pitch
 				
@@ -387,13 +388,6 @@ class channel:
 					self.wave_params = self.instrument_data.wave_params[cur_perf_row["wave_slot_id"] - 1]	
 				except:
 					pass
-
-				if len(self.perf_row_buffer) > 1: #prevent buzzing in melodic instruments
-					if math.ceil(self.old_perf_semitone) != self.perf_semitone:
-						#only reset the wave position if the semitone changes
-						self.wave_position = self.wave_params["start_position"]
-						#the old perf semitone has to be rounded down so
-						#some instruments won't buzz uncontrollably
 
 
 			#clamping and looping
@@ -711,7 +705,7 @@ class replayer():
 							#the number of ticks should remain the same length, even during one-note sweeps
 							try:
 								lerp = new_semitone - self.channels[channel].old_semitone
-								self.channels[channel].tone_porta_lerp = (lerp / (step_effect_param*self.speed[0]))
+								self.channels[channel].tone_porta_lerp = lerp / (step_effect_param*self.speed[0])
 							except:
 								self.channels[channel].tone_porta_lerp = 0
 
