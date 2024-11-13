@@ -655,18 +655,23 @@ class instrument:
 			instrument_wave_pointer = instrument_header_pointer + 24
 			offset = instrument_wave_pointer
 
-			#only retrieve the used wave parameters here:
 
 			self.wave_params = list()
+
+			#count the number of used wave slots
 			wave_slot_count = len([x for x in self.header["wave_slots"] if x != 0])
 
 			if wave_slot_count > 0:
-				for __ in range(wave_slot_count): #do for each non-zero wave slot (fixes Iridion II (Beta))
-					append_wave_params(self.wave_params)
-					offset += 24
+				for i in range(4):
+					if self.header["wave_slots"][i] > 0:
+						append_wave_params(self.wave_params)
+						offset += 24
+					else:
+						self.wave_params.append(None)
 
 			else: #handler for empty instruments:
 				append_wave_params(self.wave_params)
+
 
 		else:
 
@@ -715,7 +720,7 @@ class instrument:
 				"points": [(0,255)]
 			}
 
-			self.wave_params = [wave_params_default]
+			self.wave_params = [wave_params_default, None, None, None]
 
 			del perf_row
 			del wave_params_default
@@ -813,17 +818,18 @@ class instrument:
 
 		b = b''
 		for wave_property in self.wave_params:
-			b += struct.pack("<h??3Ll2H",
-				wave_property["finetune"],
-				wave_property["modulate"],
-				wave_property["ping_pong"],
-				wave_property["start_position"],
-				wave_property["loop_start"],
-				wave_property["loop_end"],
-				wave_property["modulate_size"],
-				wave_property["modulate_step"],
-				wave_property["modulate_speed"]
-				)
+			if wave_property != None:
+				b += struct.pack("<h??3Ll2H",
+					wave_property["finetune"],
+					wave_property["modulate"],
+					wave_property["ping_pong"],
+					wave_property["start_position"],
+					wave_property["loop_start"],
+					wave_property["loop_end"],
+					wave_property["modulate_size"],
+					wave_property["modulate_step"],
+					wave_property["modulate_speed"]
+					)
 
 		instrument_header_packed.append(b) #part 3 > waveform properties
 
