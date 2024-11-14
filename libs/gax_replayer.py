@@ -381,6 +381,10 @@ class channel:
 				except:
 					pass
 
+			
+			if math.ceil(self.old_perf_semitone) != self.perf_semitone: #reset the phase on each note if possible
+				self.wave_position = self.wave_params["start_position"]
+
 
 			#clamping and looping
 			if self.perf_row_volume > 255:
@@ -457,15 +461,14 @@ class channel:
 
 			if self.timer == 0 and self.volenv_has_looped == False:
 				#start from defined wave position
-				wave_map = self.get_wave_map()
 				try:
-					self.wave_position = wave_map[self.perf_row_buffer[self.perf_row_idx]["wave_slot_id"] - 1]["start_position"]
+					self.wave_position = self.instrument_data.wave_params[self.perf_row_buffer[self.perf_row_idx]["wave_slot_id"] - 1]["start_position"]
 				except:
 					self.wave_position = 0 #correct if possible
 
 			self.tick_perf_list(wave_bank)
+
 			self.tick_audio(mixing_rate, wave_bank, stream, fps=fps, gain=gain)
-		
 		else:
 			#render silence
 			self.output_buffer = [0]*int(mixing_rate/math.ceil(fps))
@@ -489,8 +492,9 @@ class channel:
 		self.volenv_cur_vol += self.volenv_lerp
 		
 
-	def init_instr(self, instrument_set, instr_idx=1, semitone=0x31):
 
+
+	def init_instr(self, instrument_set, instr_idx=1, semitone=0x31):
 
 		if instr_idx < len(instrument_set):
 
@@ -564,6 +568,8 @@ class channel:
 					self.wave_params = self.instrument_data.wave_params[self.perf_row_buffer[self.perf_row_idx]["wave_slot_id"] - 1]
 				except:
 					pass #don't attempt to read an empty wave parameter
+
+
 
 
 class replayer():
