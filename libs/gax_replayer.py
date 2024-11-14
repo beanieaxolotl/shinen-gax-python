@@ -125,12 +125,6 @@ class channel:
 		self.output_buffer = list()
 
 
-	def get_wave_map(self):
-		#one way to work around not having empty slots in the GAX object
-		wave_slot_map = self.instrument_data.header['wave_slots']
-		return list(self.instrument_data.wave_params[wave_slot_map.index(i)-1] if i != 0 else None for i in wave_slot_map)
-
-
 	def calc_volenv_lerp(self):
 		try:
 			volenv_a = self.volenv_buffer[self.volenv_idx]
@@ -366,7 +360,6 @@ class channel:
 			#note
 			cur_perf_row = self.perf_row_buffer[self.perf_row_idx]
 			self.old_perf_semitone = self.perf_semitone # our previous semitone from the last tick/step
-
 			if cur_perf_row["note"] not in [0, None]:
 				self.perf_semitone = cur_perf_row["note"] - 4 #apply note correction
 				self.perf_pitch = self.perf_semitone * 32 # set that as our perf pitch
@@ -382,9 +375,9 @@ class channel:
 				#if the wave slot isn't empty
 				self.wave_idx = self.instrument_data.header["wave_slots"][
 					cur_perf_row["wave_slot_id"] - 1]
+
 				try:
-					self.wave_params = self.instrument_data.wave_params[cur_perf_row["wave_slot_id"] - 1]
-					self.wave_position = self.wave_params["start_position"]
+					self.wave_params = self.instrument_data.wave_params[cur_perf_row["wave_slot_id"] - 1]	
 				except:
 					pass
 
@@ -461,9 +454,18 @@ class channel:
 		wave_bank, stream, mixing_rate = 15769, fps=60, gain=3):
 
 		if self.instrument_data != None:
+
+			if self.timer == 0 and self.volenv_has_looped == False:
+				#start from defined wave position
+				wave_map = self.get_wave_map()
+				try:
+					self.wave_position = wave_map[self.perf_row_buffer[self.perf_row_idx]["wave_slot_id"] - 1]["start_position"]
+				except:
+					self.wave_position = 0 #correct if possible
+
 			self.tick_perf_list(wave_bank)
 			self.tick_audio(mixing_rate, wave_bank, stream, fps=fps, gain=gain)
-
+		
 		else:
 			#render silence
 			self.output_buffer = [0]*int(mixing_rate/math.ceil(fps))
@@ -480,7 +482,6 @@ class channel:
 				if self.delay_timer >= self.delay_tick_count and not self.delay_finished:
 					step_data = replayer.cur_step_data[channel]
 					self.init_instr(instrument_set, instr_idx=step_data.instrument, semitone=replayer.channels[channel].target_semitone)
-
 					self.delay_finished = True
 		except:
 			pass
@@ -559,9 +560,8 @@ class channel:
 
 
 				#load the necessary wave params
-				wave_map = self.get_wave_map()
 				try:
-					self.wave_params = wave_map[self.perf_row_buffer[self.perf_row_idx]["wave_slot_id"] - 1]
+					self.wave_params = self.instrument_data.wave_params[self.perf_row_buffer[self.perf_row_idx]["wave_slot_id"] - 1]
 				except:
 					pass #don't attempt to read an empty wave parameter
 
@@ -667,7 +667,6 @@ class replayer():
 				step_effect_param = 0
 			else:
 				step_effect_param = step_data.effect_param
-
 
 			if step_data.effect_type != None:
 
