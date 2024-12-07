@@ -375,16 +375,15 @@ class channel:
 				#if the wave slot isn't empty
 				self.wave_idx = self.instrument_data.header["wave_slots"][
 					cur_perf_row["wave_slot_id"] - 1]
-
 				try:
-					self.wave_params = self.instrument_data.wave_params[cur_perf_row["wave_slot_id"] - 1]	
+					self.wave_params = self.instrument_data.wave_params[cur_perf_row["wave_slot_id"] - 1]
 				except:
 					pass
 
-			
+			# to do: camp lazlo - game over is slightly bugged due to this.
+			# it may be thinking the current sliding pitch equals a new note so it erroneously compensates
 			if math.ceil(self.old_perf_semitone) != self.perf_semitone: #reset the phase on each note if possible
 				self.wave_position = self.wave_params["start_position"]
-
 
 			#clamping and looping
 			if self.perf_row_volume > 255:
@@ -440,6 +439,14 @@ class channel:
 		self.perf_semitone = self.perf_pitch / 32 # the "normalized" semitone
 		self.perf_row_volume += self.perf_vol_slide_amount
 
+		#clamp perf row volume so we don't blow out everything
+		if self.perf_row_volume > 255:
+			self.perf_row_volume = 255
+		elif self.perf_row_volume < 0:
+			self.perf_row_volume = 0
+			self.perf_vol_slide_amount = 0
+			
+
 		if self.perf_row_speed != 0:
 			#only tick the instrument if the row speed is not 0
 			if self.perf_row_timer % self.perf_row_speed == 0:
@@ -452,7 +459,7 @@ class channel:
 			self.perf_row_timer += 1
 		else:
 			self.perf_row_speed = 0
-
+			
 
 	def tick(self, channel, replayer, instrument_set, 
 		wave_bank, stream, mixing_rate = 15769, fps=60, gain=3):
