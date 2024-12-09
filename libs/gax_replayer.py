@@ -43,8 +43,8 @@ class channel:
 		#note pitch (from step data)
 		self.semitone = 0 # the semitone straight from the GAX song data
 		#note pitch (from perf list data)
+		self.old_perf_semitone = 0
 		self.perf_semitone = 0
-		self.old_perf_semitone = 0 #to allow for phase reset
 		self.perf_pitch = 0
 
 		self.is_fixed = False
@@ -71,6 +71,7 @@ class channel:
 		self.perf_row_speed = 0
 		self.perf_row_volume = 255
 		self.perf_row_timer = 0
+		self.perf_list_end = False
 
 		#sample waveform controls
 		self.wave_data = b''
@@ -359,31 +360,30 @@ class channel:
 
 			#note
 			cur_perf_row = self.perf_row_buffer[self.perf_row_idx]
-			self.old_perf_semitone = self.perf_semitone # our previous semitone from the last tick/step
+
 			if cur_perf_row["note"] not in [0, None]:
+				self.old_perf_semitone = self.perf_semitone
 				self.perf_semitone = cur_perf_row["note"] - 4 #apply note correction
 				self.perf_pitch = self.perf_semitone * 32 # set that as our perf pitch
-				
+
 			#fixed
 			if cur_perf_row["fixed"]:
+				self.old_perf_semitone = self.perf_semitone
 				self.perf_semitone = cur_perf_row["note"] - 2
 				self.perf_pitch = self.perf_semitone * 32
 				self.is_fixed = True
+
 
 			#wave slot idx
 			if cur_perf_row["wave_slot_id"] > 0:
 				#if the wave slot isn't empty
 				self.wave_idx = self.instrument_data.header["wave_slots"][
 					cur_perf_row["wave_slot_id"] - 1]
+
 				try:
 					self.wave_params = self.instrument_data.wave_params[cur_perf_row["wave_slot_id"] - 1]
 				except:
 					pass
-
-			# to do: camp lazlo - game over is slightly bugged due to this.
-			# it may be thinking the current sliding pitch equals a new note so it erroneously compensates
-			if math.ceil(self.old_perf_semitone) != self.perf_semitone: #reset the phase on each note if possible
-				self.wave_position = self.wave_params["start_position"]
 
 			#clamping and looping
 			if self.perf_row_volume > 255:
@@ -392,9 +392,21 @@ class channel:
 				self.perf_row_volume = 0
 			
 			self.perf_row_idx += 1
+
+			if not self.perf_list_end:
+				if cur_perf_row["note"] not in [0, None]:
+					try:
+						if self.perf_semitone != math.ceil(self.old_perf_semitone):
+							self.wave_position = self.wave_params["start_position"]
+					except:
+						#do not attempt to read non-existant wave position
+						pass
+
 			if self.perf_row_idx >= len(self.perf_row_buffer):
 				#the perf list actually doesn't loop on its own; you have to make it loop manually
 				self.perf_row_idx -= 1
+				self.perf_list_end = True
+
 
 			#effect
 
@@ -410,6 +422,7 @@ class channel:
 
 				if fx_column[0] == gax.perf_row_effect.jump_to_row:
 					self.perf_row_idx = fx_column[1]
+					self.perf_list_end = False
 
 				#<untested>
 
@@ -459,7 +472,7 @@ class channel:
 			self.perf_row_timer += 1
 		else:
 			self.perf_row_speed = 0
-			
+
 
 	def tick(self, channel, replayer, instrument_set, 
 		wave_bank, stream, mixing_rate = 15769, fps=60, gain=3):
