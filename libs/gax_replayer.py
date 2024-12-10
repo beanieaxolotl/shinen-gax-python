@@ -356,9 +356,12 @@ class channel:
 
 	def tick_perf_list(self, wave_bank):
 
+		
+
 		def tick_self():
 
 			#note
+
 			cur_perf_row = self.perf_row_buffer[self.perf_row_idx]
 
 			if cur_perf_row["note"] not in [0, None]:
@@ -463,7 +466,7 @@ class channel:
 			#only tick the instrument if the row speed is not 0
 			if self.perf_row_timer % self.perf_row_speed == 0:
 				#fixes instrument 48 in Iridion II (prototype) ~ "NEW GAME"
-				#self.perf_row_volume = 255 #set the perf row volume to default if a volume command is not present
+				self.perf_row_volume = 255
 				self.perf_note_slide_amount = 0 #don't apply pitch slides if there are none
 				self.perf_vol_slide_amount = 0
 				tick_self()
