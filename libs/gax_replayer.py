@@ -385,7 +385,7 @@ class channel:
 				except:
 					pass
 
-			#clamping and looping
+			#clamping of the volume
 			if self.perf_row_volume > 255:
 				self.perf_row_volume = 255
 			elif self.perf_row_volume < 0:
@@ -413,6 +413,7 @@ class channel:
 			for column in cur_perf_row["effect"]:
 
 				fx_column = list(reversed(column)) #we can't index a tuple so this is what we gotta do
+				self.perf_row_volume = 255 #set the perf row volume to default if a volume command is not present
 
 				if fx_column[0] == gax.perf_row_effect.pitch_slide_up:
 					self.perf_note_slide_amount = fx_column[1]
