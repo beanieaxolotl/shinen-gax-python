@@ -362,24 +362,23 @@ class channel:
 			cur_perf_row = self.perf_row_buffer[self.perf_row_idx]
 
 			if cur_perf_row["note"] not in [0, None]:
-				self.old_perf_semitone = self.perf_semitone
-				self.perf_semitone = cur_perf_row["note"] - 4 #apply note correction
-				self.perf_pitch = self.perf_semitone * 32 # set that as our perf pitch
 
-			#fixed
-			if cur_perf_row["fixed"]:
-				self.old_perf_semitone = self.perf_semitone
-				self.perf_semitone = cur_perf_row["note"] - 2
-				self.perf_pitch = self.perf_semitone * 32
-				self.is_fixed = True
+				if not cur_perf_row["fixed"]:
+					self.old_perf_semitone = self.perf_semitone
+					self.perf_semitone = cur_perf_row["note"] - 4 #apply note correction
+					self.perf_pitch = self.perf_semitone * 32 # set that as our perf pitch
+				else:
+					self.old_perf_semitone = self.perf_semitone
+					self.perf_semitone = cur_perf_row["note"] - 2
+					self.perf_pitch = self.perf_semitone * 32
+					self.is_fixed = True
 
 
 			#wave slot idx
-			if cur_perf_row["wave_slot_id"] > 0:
+			if cur_perf_row["wave_slot_id"] > 0 and cur_perf_row["note"] not in [0, None]:
 				#if the wave slot isn't empty
 				self.wave_idx = self.instrument_data.header["wave_slots"][
 					cur_perf_row["wave_slot_id"] - 1]
-
 				try:
 					self.wave_params = self.instrument_data.wave_params[cur_perf_row["wave_slot_id"] - 1]
 				except:
@@ -413,7 +412,6 @@ class channel:
 			for column in cur_perf_row["effect"]:
 
 				fx_column = list(reversed(column)) #we can't index a tuple so this is what we gotta do
-				self.perf_row_volume = 255 #set the perf row volume to default if a volume command is not present
 
 				if fx_column[0] == gax.perf_row_effect.pitch_slide_up:
 					self.perf_note_slide_amount = fx_column[1]
@@ -465,9 +463,11 @@ class channel:
 			#only tick the instrument if the row speed is not 0
 			if self.perf_row_timer % self.perf_row_speed == 0:
 				#fixes instrument 48 in Iridion II (prototype) ~ "NEW GAME"
+				#self.perf_row_volume = 255 #set the perf row volume to default if a volume command is not present
 				self.perf_note_slide_amount = 0 #don't apply pitch slides if there are none
 				self.perf_vol_slide_amount = 0
 				tick_self()
+
 
 		if len(self.perf_row_buffer) > 1:
 			self.perf_row_timer += 1
