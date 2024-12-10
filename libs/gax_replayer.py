@@ -354,7 +354,7 @@ class channel:
 					self.vibrato_pitch = 0
 
 
-	def tick_perf_list(self, wave_bank):
+	def tick_perf_list(self, wave_bank, reset_volume=True):
 
 		
 
@@ -365,6 +365,10 @@ class channel:
 			cur_perf_row = self.perf_row_buffer[self.perf_row_idx]
 
 			if cur_perf_row["note"] not in [0, None]:
+
+				if reset_volume: #emulates GAX v3.05
+					self.perf_row_volume = 255
+				#else this emulates GAX v3.03a				
 
 				if not cur_perf_row["fixed"]:
 					self.old_perf_semitone = self.perf_semitone
@@ -465,8 +469,7 @@ class channel:
 		if self.perf_row_speed != 0:
 			#only tick the instrument if the row speed is not 0
 			if self.perf_row_timer % self.perf_row_speed == 0:
-				#fixes instrument 48 in Iridion II (prototype) ~ "NEW GAME"
-				self.perf_row_volume = 255
+				#fixes instrument 48 in Iridion II (prototype) ~ "NEW GAME"	
 				self.perf_note_slide_amount = 0 #don't apply pitch slides if there are none
 				self.perf_vol_slide_amount = 0
 				tick_self()
@@ -479,7 +482,8 @@ class channel:
 
 
 	def tick(self, channel, replayer, instrument_set, 
-		wave_bank, stream, mixing_rate = 15769, fps=60, gain=3):
+		wave_bank, stream, mixing_rate = 15769, fps=60, gain=3,
+		major_version=3, minor_version=5):
 
 		if self.instrument_data != None:
 
@@ -490,8 +494,14 @@ class channel:
 				except:
 					self.wave_position = 0 #correct if possible
 
-			self.tick_perf_list(wave_bank)
-
+			if major_version > 2:
+				if minor_version > 3:
+					self.tick_perf_list(wave_bank)
+				else:
+					self.tick_perf_list(wave_bank, reset_volume=False)
+			else:
+				self.tick_perf_list(wave_bank, reset_volume=False)
+				
 			self.tick_audio(mixing_rate, wave_bank, stream, fps=fps, gain=gain)
 		else:
 			#render silence
@@ -533,8 +543,7 @@ class channel:
 				self.timer = 0 #reset timer
 				self.instrument_data = instrument_set[instr_idx] #get the required data
 				self.is_active = True #let the replayer know this channel is active
-				self.perf_row_volume = 255
-
+				
 			self.old_semitone = self.semitone
 			self.semitone = semitone
 
