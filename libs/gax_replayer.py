@@ -296,7 +296,7 @@ class channel:
 
 				self.semitone += self.note_slide_amount/(mix_rate*(fps/1.875)/fps)   #cross checked with custom porta down tracks / Sigma Star Saga
 				self.semitone += self.tone_porta_lerp/(mix_rate/(fps*(fps/11.1)))    #cross checked with custom tone portamento tracks
-				self.step_volume += self.vol_slide_amount/(mix_rate*(fps/1.875)/fps) #unconfirmed
+				self.step_volume += self.vol_slide_amount/(mix_rate/fps) #unconfirmed
 
 				if self.is_tone_porta:
 					if int(self.semitone) == self.target_semitone:
@@ -314,8 +314,6 @@ class channel:
 				self.wave_output *= self.perf_row_volume/255
 				self.wave_output *= self.step_volume/255
 				self.wave_output *= self.volenv_cur_vol/255
-
-				self.step_volume += self.vol_slide_amount/255
 
 				#clamp step volume so we don't blow out everything
 				if self.step_volume > 255:
