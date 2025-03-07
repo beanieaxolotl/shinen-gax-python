@@ -19,9 +19,9 @@ To do:
 	> depth (figure out proper scaling)
 	> speed / wait (accurate)
 
-> wavetable modulation synthesis (not done)
-	> unless i figure out how this works, this is not implemented
-	> (use cases: Shin'en Multimedia intro jingle ~ Iridion II)
+> wavetable modulation synthesis (75% done)
+	> few edge cases to iron out
+	> (use cases: Shin'en Multimedia intro jingle ~ Iridion II, Jackie Chan Adventures)
 '''
 
 
@@ -37,88 +37,101 @@ class channel:
 
 		#note delay
 		self.delay_tick_count = 0
-		self.delay_timer = 0
-		self.delay_finished = True
+		self.delay_timer      = 0
+		self.delay_finished   = True
 
 		#note pitch (from step data)
 		self.semitone = 0 # the semitone straight from the GAX song data
+
 		#note pitch (from perf list data)
 		self.old_perf_semitone = 0
-		self.perf_semitone = 0
-		self.perf_pitch = 0
+		self.perf_semitone     = 0
+		self.perf_pitch        = 0
 
 		self.is_fixed = False
 
-		self.note_slide_amount = 0
+		self.note_slide_amount      = 0
 		self.perf_note_slide_amount = 0
 
-		self.old_semitone = 0 #to allow for pitch slides
-		self.target_semitone = 0 
-		self.is_tone_porta = False
-		self.tone_porta_lerp = 0
+		self.old_semitone        = 0 #to allow for pitch slides
+		self.target_semitone     = 0 
+		self.is_tone_porta       = False
+		self.tone_porta_lerp     = 0
 		self.tone_porta_strength = 0
 
-		self.vol_slide_amount = 0
+		self.vol_slide_amount      = 0
 		self.perf_vol_slide_amount = 0
 
 		#instrument indexing
 		self.instrument_idx = 0 #index into the instrument bank
 
 		#performance list controls
-		self.perf_row_idx = 0
+		self.perf_row_idx    = 0
 		self.perf_row_buffer = None
-		self.perf_row_delay = 0
-		self.perf_row_speed = 0
+		self.perf_row_delay  = 0
+		self.perf_row_speed  = 0
 		self.perf_row_volume = 255
-		self.perf_row_timer = 0
-		self.perf_list_end = False
+		self.perf_row_timer  = 0
+		self.perf_list_end   = False
 
 		#sample waveform controls
-		self.wave_data = b''
-		self.wave_params = None
+		self.wave_params    = None
 		self.wave_step_rate = 0
-		self.wave_idx = 0
-		self.wave_pitch = 0
-		self.wave_position = 0
+		self.wave_idx       = 0
+		self.wave_position  = 0
 		self.wave_direction = 1
-		self.wave_output = 0
+		self.wave_output    = 0
+
+		#modulator controls
+		self.modulate_size      = 0
+		self.modulate_step      = 0
+		self.modulate_speed     = 0
+		self.is_modulate        = False
+
+		self.modulate_timer       = 0
+		self.modulate_position    = 0
+		self.modulate_subposition = 0
+		self.modulate_final_pos   = 0
+		self.modulate_direction   = 1
+		self.modulate_step_rate   = 0
+		self.modulate_buffer      = list()
 
 
 		## vibrato controls
-		self.use_vibrato = False  #to use vibrato at all
-		self.is_vibrato = False   #True if we are now processing the vibrato
-		self.vibrato_timer = 0    #timer for the vibrato + wait
-		self.vibrato_subtimer = 0 #timer for the vibrato itself
+		self.use_vibrato      = False #to use vibrato at all
+		self.is_vibrato       = False #True if we are now processing the vibrato
+		self.vibrato_timer    = 0     #timer for the vibrato + wait
+		self.vibrato_subtimer = 0     #timer for the vibrato itself
 
-		self.vibrato_init = 0     #ticks to wait before applying
+		self.vibrato_init  = 0 #ticks to wait before applying
 		self.vibrato_depth = 0
 		self.vibrato_speed = 0
 
-		self.vibrato_pitch = 0    #detune pitch to apply to the main pitch
+		self.vibrato_pitch     = 0 #detune pitch to apply to the main pitch
 		self.vibrato_step_rate = 0 
 
 
 		#envelope controls
 		self.instrument_data = None
-		self.volenv_timer = 0 
-		self.volenv_buffer = None
-		self.volenv_idx = 0
-		self.volenv_cur_vol = 0
-		self.volenv_lerp = 0
+		self.volenv_timer    = 0 
+		self.volenv_buffer   = None
+		self.volenv_idx      = 0
+		self.volenv_cur_vol  = 0
+		self.volenv_lerp     = 0
 
-		self.volenv_pause = False #so the sustain point works properly
+		self.volenv_pause       = False #so the sustain point works properly
 		self.volenv_pause_point = None
-		self.volenv_note_off = False
+		self.volenv_note_off    = False
 		self.volenv_turning_off = False
 
-		self.volenv_loop = False
+		self.volenv_loop       = False
 		self.volenv_has_looped = False
 
 		self.volenv_end = False
 
 		#volume controls
 		self.step_volume = 255
-		self.mix_volume = 1 #use for fades
+		self.mix_volume  = 1 #use for fades
 
 		#is the channel active or not
 		self.is_active = False #set to false if an envelope finishes
@@ -219,7 +232,7 @@ class channel:
 			self.volenv_lerp = 0
 
 
-	def tick_audio(self, mix_rate, wave_bank, stream, fps=60, gain=3, debug=False):
+	def tick_audio(self, mix_rate, wave_bank, stream, fps=60, gain=3):
 
 		'''
 		current bugs:
@@ -228,26 +241,45 @@ class channel:
 		> vibrato depth calculation is incorrect (cases - Camp Lazlo)
 		'''
 
+
 		self.output_buffer = list()
 
 		if self.use_vibrato:
 			if self.is_vibrato:
 				self.vibrato_step_rate = (self.vibrato_pitch/mix_rate*fps)
-				if debug:
-					print((self.vibrato_depth))
 
 		if self.wave_params != None:
 
-			#apply finetune to both step rates for obvious reasons
+			#get modulation values
+			self.is_modulate = self.wave_params['modulate']
+			if self.is_modulate:
+				self.modulate_size  = self.wave_params['modulate_size']
+				self.modulate_step  = self.wave_params['modulate_step']
+				self.modulate_speed = self.wave_params['modulate_speed']
+
+			#apply finetune to both step rates
 
 			if not self.is_fixed:
-				self.wave_step_rate = (get_freq(get_period(
-									   (self.perf_semitone + (self.wave_params["finetune"]/32)) 
-									   + self.semitone)) / mix_rate) + self.vibrato_step_rate
+
+				if not self.is_modulate:
+					self.wave_step_rate = (get_freq(get_period(
+										   (self.perf_semitone + (self.wave_params["finetune"]/32)) 
+										   + self.semitone)) / mix_rate) + self.vibrato_step_rate
+				else:
+					self.modulate_step_rate = (get_freq(get_period(
+										   (self.perf_semitone + (self.wave_params["finetune"]/32)) 
+										   + self.semitone)) / mix_rate) + self.vibrato_step_rate
+
 			else:
-				self.wave_step_rate = (get_freq(get_period(
+
+				if not self.is_modulate:
+					self.wave_step_rate = (get_freq(get_period(
 									   self.perf_semitone + (self.wave_params["finetune"]/32)
-									   )))/mix_rate + self.vibrato_step_rate
+									   ))) / mix_rate + self.vibrato_step_rate
+				else:
+					self.modulate_step_rate = self.modulate_step + (get_freq(get_period(
+									   self.perf_semitone + (self.wave_params["finetune"]/32)
+									   ))) / mix_rate + self.vibrato_step_rate
 
 
 			play_once = (self.wave_params["loop_start"] == 0 and self.wave_params["loop_end"] == 0)
@@ -257,46 +289,99 @@ class channel:
 				if self.wave_idx >= len(wave_bank): #accurate GAX behavior
 					break
 
-				self.wave_position += (self.wave_step_rate)*self.wave_direction
+				if self.is_modulate:
+
+					if self.wave_params != None:
+						start_pos = self.wave_params["start_position"]
+
+					self.modulate_subposition += (self.modulate_step_rate * self.modulate_direction)
+					self.modulate_subposition %= self.modulate_size
+
+					if self.wave_params != None:
+						self.modulate_final_pos = (self.modulate_position + self.modulate_subposition) + self.wave_params["start_position"]
+					else:
+						self.modulate_final_pos = (self.modulate_position + self.modulate_subposition)
+
+				else:
+
+					self.wave_position += self.wave_step_rate*self.wave_direction
+
+				
 				# read through the waveform data
 						
 				if len(wave_bank[self.wave_idx]) > 0:
 
 					if not play_once:
-						#looping handlers
-						if (self.wave_position >= len(wave_bank[self.wave_idx])
-							or self.wave_position >= self.wave_params["loop_end"]):
-							if self.wave_params["ping_pong"]:
-								#bidi loop
-								self.wave_direction = -1
-							else:
-								#forward loop
-								self.wave_position = self.wave_params["loop_start"]
 
-						if (self.wave_position <= 0 or self.wave_position <= self.wave_params["loop_start"]):
-							if self.wave_params["ping_pong"]:
-								#return from backwards reading
-								self.wave_direction = 1
+						if not self.is_modulate:
+
+							#looping handlers
+							if (self.wave_position >= len(wave_bank[self.wave_idx])
+								or self.wave_position >= self.wave_params["loop_end"]):
+								if self.wave_params["ping_pong"]:
+									#bidi loop
+									self.wave_direction = -1
+								else:
+									#forward loop
+									self.wave_position = self.wave_params["loop_start"]
+
+							if (self.wave_position <= 0 or self.wave_position <= self.wave_params["loop_start"]):
+								if self.wave_params["ping_pong"]:
+									#return from backwards reading
+									self.wave_direction = 1
+
+						else:
+
+							if (self.modulate_final_pos >= len(wave_bank[self.wave_idx])
+								or self.modulate_final_pos >= self.wave_params["loop_end"]):
+								if self.wave_params["ping_pong"]:
+									#bidi loop
+									self.modulate_direction = -1
+								else:
+									#forward loop
+									self.modulate_final_pos %= len(wave_bank[self.wave_idx])
+									self.modulate_position  %= len(wave_bank[self.wave_idx])
+
+							if (self.modulate_final_pos <= 0 or self.modulate_final_pos <= self.wave_params["loop_start"]):
+								if self.wave_params["ping_pong"]:
+									#return from backwards reading
+									self.modulate_direction = 1
+
+
 				else:
 					#don't attempt to read from an empty sample
-					self.wave_position = 0
+					self.wave_position     = 0
+					self.modulate_position = 0
 
-				#clamping
-				if self.wave_position >= len(wave_bank[self.wave_idx]):
-					self.wave_position = len(wave_bank[self.wave_idx]) - 1
-				elif self.wave_position < 0:
-					self.wave_position = 0
-				
-				#failsafe checking if all else fails
-				if (self.wave_position >= len(wave_bank[self.wave_idx]) 
-					or self.wave_position < 0):
-					self.wave_position = 0
+				if not self.is_modulate:
+
+					if self.wave_position >= len(wave_bank[self.wave_idx]):
+						self.wave_position = len(wave_bank[self.wave_idx]) - 1
+					elif self.wave_position < 0:
+						self.wave_position = 0
+					
+					if (self.wave_position >= len(wave_bank[self.wave_idx]) 
+						or self.wave_position < 0):
+						self.wave_position = 0
+
+				else:
+
+					#clamping
+					if self.modulate_position >= len(wave_bank[self.wave_idx]):
+						self.modulate_position = len(wave_bank[self.wave_idx]) - 1
+					elif self.modulate_position < 0:
+						self.modulate_position = 0
+					
+					#failsafe checking if all else fails
+					if (self.modulate_position >= len(wave_bank[self.wave_idx]) 
+						or self.modulate_position < 0):
+						self.modulate_position = 0
 
 				self.tick_volenv()
 
 				self.semitone += self.note_slide_amount/(mix_rate*(fps/1.875)/fps)   #cross checked with custom porta down tracks / Sigma Star Saga
 				self.semitone += self.tone_porta_lerp/(mix_rate/(fps*(fps/11.1)))    #cross checked with custom tone portamento tracks
-				self.step_volume += self.vol_slide_amount/(mix_rate/fps) #unconfirmed
+				self.step_volume += self.vol_slide_amount/(mix_rate/fps)
 
 				if self.is_tone_porta:
 					if int(self.semitone) == self.target_semitone:
@@ -304,10 +389,18 @@ class channel:
 						self.is_tone_porta = False
 						self.semitone = self.target_semitone
 
+				
 
 				#output the current instrument's work
 				if self.wave_idx != 0: #do not attempt to read sample #0 -> reserved empty sample
-					self.wave_output = wave_bank[self.wave_idx][int(self.wave_position)] - 128
+
+					if not self.is_modulate:
+						self.wave_output = (wave_bank[self.wave_idx][int(self.wave_position)] - 128)
+					else:
+						try:
+							self.wave_output = wave_bank[self.wave_idx][int(self.modulate_final_pos)] - 128
+						except:
+							pass
 
 				#apply volume transformations
 				
@@ -336,6 +429,11 @@ class channel:
 				#convert to a signed PCM stream
 				self.output_buffer.append(self.wave_output)
 
+			if self.is_modulate:
+				self.modulate_timer += 1
+				if self.modulate_timer % self.modulate_speed == 0:
+					self.modulate_position += self.modulate_step
+
 		#vibrato handlers
 
 		if self.vibrato_timer == self.vibrato_init:
@@ -353,8 +451,6 @@ class channel:
 
 
 	def tick_perf_list(self, wave_bank, reset_volume=True):
-
-		
 
 		def tick_self():
 
@@ -488,9 +584,14 @@ class channel:
 			if self.timer == 0 and self.volenv_has_looped == False:
 				#start from defined wave position
 				try:
-					self.wave_position = self.instrument_data.wave_params[self.perf_row_buffer[self.perf_row_idx]["wave_slot_id"] - 1]["start_position"]
+					if not is_modulate:
+						self.wave_position = self.instrument_data.wave_params[self.perf_row_buffer[self.perf_row_idx]["wave_slot_id"] - 1]["start_position"]
+					else:
+						self.modulate_position = self.instrument_data.wave_params[self.perf_row_buffer[self.perf_row_idx]["wave_slot_id"] - 1]["start_position"]
+
 				except:
 					self.wave_position = 0 #correct if possible
+					self.modulate_position = 0
 
 			if major_version > 2:
 				if minor_version > 3:
@@ -546,6 +647,9 @@ class channel:
 			self.semitone = semitone
 
 			if instr_idx not in [0, None]:
+
+				self.modulate_timer       = 0
+				self.modulate_direction   = 1
 
 				self.use_vibrato = False 
 				self.vibrato_step_rate = 0 #do not carry the vibrato from
