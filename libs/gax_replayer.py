@@ -616,26 +616,26 @@ class channel:
 
 		if instr_idx < len(instrument_set):
 
-			self.volenv_timer = 0
-			self.is_tone_porta = False
-			self.volenv_note_off = False
+			self.volenv_timer       = 0
+			self.is_tone_porta      = False
+			self.volenv_note_off    = False
 			self.volenv_turning_off = False
 			
 			if instr_idx not in [0, None]:
 
-				self.volenv_pause = False
-				self.timer = 0 #reset timer
+				self.volenv_pause    = False
+				self.timer           = 0 #reset timer
 				self.instrument_data = instrument_set[instr_idx] #get the required data
-				self.is_active = True #let the replayer know this channel is active
+				self.is_active       = True #let the replayer know this channel is active
 				
 			self.old_semitone = self.semitone
-			self.semitone = semitone
+			self.semitone     = semitone
 
 			if instr_idx not in [0, None]:
 
 				self.modulate_timer = 0
 
-				self.use_vibrato = False 
+				self.use_vibrato       = False 
 				self.vibrato_step_rate = 0 #do not carry the vibrato from
 										   #one instrument to one that doesn't have vibrato	
 				self.note_slide_amount = 0
@@ -645,19 +645,19 @@ class channel:
 
 				self.perf_note_slide_amount = 0 #reset the slide amount
 				
-				self.perf_semitone = 0
-				self.perf_row_idx = 0
-				self.perf_row_speed = self.instrument_data.perf_list["perf_row_speed"]
+				self.perf_semitone   = 0
+				self.perf_row_idx    = 0
+				self.perf_row_speed  = self.instrument_data.perf_list["perf_row_speed"]
 				self.perf_row_buffer = self.instrument_data.perf_list["perf_list_data"]
-				self.perf_row_timer = 0
+				self.perf_row_timer  = 0
 
 				self.is_fixed = False
 
 				self.volenv_buffer = list(list(i) for i in self.instrument_data.volume_envelope["points"])
-				self.volenv_idx = 0
-				self.volenv_lerp = 0
-				self.volenv_loop = False
-				self.volenv_end = False
+				self.volenv_idx    = 0
+				self.volenv_lerp   = 0
+				self.volenv_loop   = False
+				self.volenv_end    = False
 
 				try:
 					self.volenv_pause_point = self.instrument_data.volume_envelope["sustain_point"]
@@ -667,14 +667,14 @@ class channel:
 				vibrato_params = self.instrument_data.header['vibrato_params']
 
 				if (vibrato_params['vibrato_wait'] == 0 and vibrato_params['vibrato_depth'] == 0 and vibrato_params['vibrato_speed'] == 0):
-					self.use_vibrato = False
-					self.is_vibrato = False
-					self.vibrato_init = 0
+					self.use_vibrato   = False
+					self.is_vibrato    = False
+					self.vibrato_init  = 0
 					self.vibrato_depth = 0
 					self.vibrato_speed = 0
 				else:
-					self.use_vibrato = True
-					self.vibrato_init = vibrato_params['vibrato_wait']
+					self.use_vibrato   = True
+					self.vibrato_init  = vibrato_params['vibrato_wait']
 					self.vibrato_depth = vibrato_params['vibrato_depth']
 					self.vibrato_speed = vibrato_params['vibrato_speed']
 
@@ -710,19 +710,19 @@ class replayer():
 
 		self.timer = 0
 
-		self.speed = [6,6]
+		self.speed       = [6,6]
 		self.speed_timer = self.speed[0]
 
-		self.cur_step = 0
-		self.cur_pat = 0
+		self.cur_step   = 0
+		self.cur_pat    = 0
 		self.loop_count = 0 #For audio export
-		self.skip = False #True if a pattern break is read
+		self.skip       = False #True if a pattern break is read
 
 		self.cur_pat_data = get_patterns_at_idx(self.song_data, self.cur_pat) #get the first patterns
 
-		self.step_count = self.song_data.get_properties().step_count
+		self.step_count    = self.song_data.get_properties().step_count
 		self.pattern_count = self.song_data.get_properties().song_length
-		self.restart_pos = self.song_data.get_properties().restart_position
+		self.restart_pos   = self.song_data.get_properties().restart_position
 
 		self.num_channels = self.song_data.get_properties().channel_count
 
@@ -750,7 +750,7 @@ class replayer():
 		step_data = self.cur_step_data[channel]
 
 		self.channels[channel].note_slide_amount = 0 #don't apply pitch slides if there are none
-		self.channels[channel].vol_slide_amount = 0 #same for volume slides
+		self.channels[channel].vol_slide_amount  = 0 #same for volume slides
 
 		#do this only if the step data is *not* an empty step
 
