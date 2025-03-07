@@ -569,7 +569,7 @@ class channel:
 			if self.timer == 0 and self.volenv_has_looped == False:
 				#start from defined wave position
 				try:
-					if not is_modulate:
+					if not self.is_modulate:
 						self.wave_position = self.instrument_data.wave_params[self.perf_row_buffer[self.perf_row_idx]["wave_slot_id"] - 1]["start_position"]
 					else:
 						self.modulate_position = self.instrument_data.wave_params[self.perf_row_buffer[self.perf_row_idx]["wave_slot_id"] - 1]["start_position"]
