@@ -7,6 +7,7 @@
 |Wave parameters                 |95% - There are a few edge cases that prevent this from being fully accurate       |
 |Vibrato                         |66% - Vibrato depth is inaccurate (it is either too deep or shallow)               |
 |Perf list handling              |98% - Perf list delay is untested                                                  |
+|Waveform modulation             |95% - Looping behavior is imperfect                                                |
 
 
 ### Volume envelope handling
