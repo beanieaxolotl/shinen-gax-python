@@ -19,8 +19,8 @@ To do:
 	> depth (figure out proper scaling)
 	> speed / wait (accurate)
 
-> wavetable modulation synthesis (75% done)
-	> few edge cases to iron out
+> wavetable modulation synthesis (95% done)
+	> looping is slightly imperfect
 	> (use cases: Shin'en Multimedia intro jingle ~ Iridion II, Jackie Chan Adventures)
 '''
 
@@ -92,9 +92,7 @@ class channel:
 		self.modulate_position    = 0
 		self.modulate_subposition = 0
 		self.modulate_final_pos   = 0
-		self.modulate_direction   = 1
 		self.modulate_step_rate   = 0
-		self.modulate_buffer      = list()
 
 
 		## vibrato controls
@@ -232,7 +230,7 @@ class channel:
 			self.volenv_lerp = 0
 
 
-	def tick_audio(self, mix_rate, wave_bank, stream, fps=60, gain=3):
+	def tick_audio(self, mix_rate, wave_bank, stream, fps=60, gain=3, debug=False):
 
 		'''
 		current bugs:
@@ -291,10 +289,7 @@ class channel:
 
 				if self.is_modulate:
 
-					if self.wave_params != None:
-						start_pos = self.wave_params["start_position"]
-
-					self.modulate_subposition += (self.modulate_step_rate * self.modulate_direction)
+					self.modulate_subposition += self.modulate_step_rate
 					self.modulate_subposition %= self.modulate_size
 
 					if self.wave_params != None:
@@ -333,19 +328,9 @@ class channel:
 						else:
 
 							if (self.modulate_final_pos >= len(wave_bank[self.wave_idx])
-								or self.modulate_final_pos >= self.wave_params["loop_end"]):
-								if self.wave_params["ping_pong"]:
-									#bidi loop
-									self.modulate_direction = -1
-								else:
-									#forward loop
-									self.modulate_final_pos %= len(wave_bank[self.wave_idx])
-									self.modulate_position  %= len(wave_bank[self.wave_idx])
-
-							if (self.modulate_final_pos <= 0 or self.modulate_final_pos <= self.wave_params["loop_start"]):
-								if self.wave_params["ping_pong"]:
-									#return from backwards reading
-									self.modulate_direction = 1
+							or self.modulate_final_pos >= self.wave_params["loop_end"]):
+								#only forward loops are supported in modulation
+								self.modulate_final_pos %= len(wave_bank[self.wave_idx])
 
 
 				else:
@@ -601,7 +586,7 @@ class channel:
 			else:
 				self.tick_perf_list(wave_bank, reset_volume=False)
 				
-			self.tick_audio(mixing_rate, wave_bank, stream, fps=fps, gain=gain)
+			self.tick_audio(mixing_rate, wave_bank, stream, fps=fps, gain=gain, debug=True)
 		else:
 			#render silence
 			self.output_buffer = [0]*int(mixing_rate/math.ceil(fps))
@@ -648,8 +633,7 @@ class channel:
 
 			if instr_idx not in [0, None]:
 
-				self.modulate_timer       = 0
-				self.modulate_direction   = 1
+				self.modulate_timer = 0
 
 				self.use_vibrato = False 
 				self.vibrato_step_rate = 0 #do not carry the vibrato from
