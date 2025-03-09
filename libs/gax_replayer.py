@@ -560,7 +560,7 @@ class channel:
 
 
 	def tick(self, channel, replayer, instrument_set, 
-		wave_bank, stream, mixing_rate = 15769, fps=60, gain=3,
+		wave_bank, stream, mixing_rate = 15769, fps=60, gain=1,
 		major_version=3, minor_version=5):
 
 		if self.instrument_data != None:
@@ -900,7 +900,7 @@ class replayer():
 	def tick_channels(self, buffer, mixing_rate):
 
 		for i in range(self.num_channels):
-			self.channels[i].tick(self.gax_data.wave_bank, buffer, mixing_rate, gain=1)		
+			self.channels[i].tick(self.gax_data.wave_bank, buffer, mixing_rate)		
 
 		buffer.write(mix_buffer)
 
