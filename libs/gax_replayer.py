@@ -10,7 +10,9 @@ from .gax_constructors import wave_param
 '''
 To do:
 
-> mixing volume (85% accurate)
+> mixing volume (100% accurate)
+	> exact volume ratio is unknown, but sampled intros are more listenable now
+
 > touch up tone portamento (95% accurate)
 > sustain point (100% accurate)
 > looping envelopes (100% accurate?)
@@ -27,6 +29,10 @@ To do:
 
 def get_patterns_at_idx(song_data, idx):
 	return(list(i[idx] for i in song_data.get_order_list()))
+
+#https://stackoverflow.com/questions/9775731/clamping-floating-numbers-in-python#13232356
+def clamp(mini, maxim, val):
+	return min(max(mini, val), maxim)
 
 
 class channel:
@@ -57,13 +63,10 @@ class channel:
 		self.target_semitone     = 0 
 		self.is_tone_porta       = False
 		self.tone_porta_lerp     = 0
-		self.tone_porta_strength = 0
 
 		self.vol_slide_amount      = 0
 		self.perf_vol_slide_amount = 0
 
-		#instrument indexing
-		self.instrument_idx = 0 #index into the instrument bank
 
 		#performance list controls
 		self.perf_row_idx    = 0
@@ -235,7 +238,7 @@ class channel:
 		'''
 		current bugs:
 		> envelope pause timing / note off timing is inconsistent during speed modulation (cases - Jazz Jackrabbit, SpongeBob: Lights Camera Pants)
-		> envelope looping is slightly faster (case - Iridion II)
+		> envelope looping is one tick faster (case - Iridion II)
 		> vibrato depth calculation is incorrect (cases - Camp Lazlo)
 		'''
 
@@ -374,7 +377,6 @@ class channel:
 						self.is_tone_porta = False
 						self.semitone = self.target_semitone
 
-				
 
 				#output the current instrument's work
 				if self.wave_idx != 0: #do not attempt to read sample #0 -> reserved empty sample
@@ -387,32 +389,20 @@ class channel:
 						except:
 							pass
 
+
 				#apply volume transformations
-				
-				self.wave_output *= self.perf_row_volume/255
-				self.wave_output *= self.step_volume/255
-				self.wave_output *= self.volenv_cur_vol/255
 
-				#clamp step volume so we don't blow out everything
-				if self.step_volume > 255:
-					self.step_volume = 255
-				elif self.step_volume < 0:
-					self.step_volume = 0
+				self.wave_output *= (((self.perf_row_volume/255) * self.step_volume/255) * self.volenv_cur_vol/255)
+				#clamp step volume into normal bounds
+				self.step_volume = clamp(0, 255, self.step_volume)
+				if self.step_volume < 0:
 					self.vol_slide_amount = 0
-				'''
-				Apply gain here. 
-				This is slightly inaccurate for now
-				'''
-				self.wave_output *= (gain)*self.mix_volume
 
-				#clamp wave output so we don't blow out everything.. again
-				if self.wave_output > 127:
-					self.wave_output = 127
-				elif self.wave_output < -128:
-					self.wave_output = -128
-
-				#convert to a signed PCM stream
+				#apply mix volume / gain to our wave output
+				self.wave_output *= gain*self.mix_volume
+				#convert to a signed buffer list
 				self.output_buffer.append(self.wave_output)
+
 
 			if self.is_modulate:
 				self.modulate_timer += 1
@@ -447,7 +437,13 @@ class channel:
 
 				if reset_volume: #emulates GAX v3.05
 					self.perf_row_volume = 255
-				#else this emulates GAX v3.03a				
+
+				#else this emulates GAX v3.03a. this is kind of buggy,
+				#especially in Shrek 2 and Tony Hawk's Underground
+
+				# old_perf_semitone and perf_pitch are called twice.
+				# i don't think this is ideal, but optimizing this
+				# breaks the phase reset of the perf list
 
 				if not cur_perf_row["fixed"]:
 					self.old_perf_semitone = self.perf_semitone
@@ -640,7 +636,6 @@ class channel:
 										   #one instrument to one that doesn't have vibrato	
 				self.note_slide_amount = 0
 
-				self.instrument_idx = instr_idx
 				self.wave_direction = 1 # samples start playing forwards
 
 				self.perf_note_slide_amount = 0 #reset the slide amount
@@ -808,8 +803,6 @@ class replayer():
 
 						case 0x3: #tone portamento
 
-							self.channels[channel].tone_porta_strength = step_effect_param
-
 							new_semitone = self.channels[channel].semitone
 							if step_data.semitone == None:
 								new_semitone = 0
@@ -881,70 +874,35 @@ class replayer():
 		else:
 			num_ch = self.num_channels
 
-		mix_buffer = list(i//num_ch for i in self.channels[0].output_buffer)
-
-		for i in range(1, num_ch):
-
+		mix_buffer = list(0.00 for i in self.channels[0].output_buffer)
+		for i in range(0, num_ch):
 			#go through each channel that had been processed
 			#and "mix" them together
+			channel = self.channels[i].output_buffer
+			mix_buffer = list((mix_buffer[i] + (channel[i])) for i in range(len(channel)))
 
-			j = 0
-
-			#to do: optimize this somehow
-			for float_value in self.channels[i].output_buffer:
-				try:
-					mix_buffer[j] += float_value // self.num_channels
-
-					if mix_buffer[j] > 127: #cap the mixing buffer to
-						mix_buffer[j] = 127 #valid int8 range
-					elif mix_buffer[j] < -128:
-						mix_buffer[j] = -128
-
-					j += 1
-				except:
-					pass
-
-
-		mix_buffer = list(round(i) for i in mix_buffer)
+		mix_buffer = bytes((x & 0xff for x in (list(clamp(-128, 127, round(i)) for i in mix_buffer))))
 		self.output_buffer = list(x for x in mix_buffer)
-		mix_buffer = bytes((x & 0xff for x in mix_buffer))
 
 		if not export:
 			buffer.write(mix_buffer)
 		if debug:
 			return mix_buffer
 
+
 	def tick_channels(self, buffer, mixing_rate):
 
 		for i in range(self.num_channels):
 			self.channels[i].tick(self.gax_data.wave_bank, buffer, mixing_rate, gain=(self.mix_amp/100))		
-		
-		mix_buffer = list(i//self.num_channels for i in self.channels[0].output_buffer)
 
-		for i in range(1, self.num_channels):
-
+		mix_buffer = list(0.00 for i in self.channels[0].output_buffer)
+		for i in range(0, num_ch):
 			#go through each channel that had been processed
 			#and "mix" them together
+			channel = self.channels[i].output_buffer
+			mix_buffer = list((mix_buffer[i] + (channel[i])) for i in range(len(channel)))
 
-			j = 0
-
-			#to do: optimize this somehow
-			for float_value in self.channels[i].output_buffer:
-				try:
-					mix_buffer[j] += float_value // self.num_channels
-
-					if mix_buffer[j] > 127: #cap the mixing buffer to
-						mix_buffer[j] = 127 #valid int8 range
-					elif mix_buffer[j] < -128:
-						mix_buffer[j] = -128
-
-					j += 1
-				except:
-					pass
-
-
-		mix_buffer = list(round(i) for i in mix_buffer)
-		mix_buffer = bytes((x & 0xff for x in mix_buffer))
+		mix_buffer = bytes((x & 0xff for x in (list(clamp(-128, 127, round(i)) for i in mix_buffer))))
 
 		buffer.write(mix_buffer)
 
