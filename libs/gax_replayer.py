@@ -408,8 +408,10 @@ class channel:
 				self.modulate_timer += 1
 				if self.modulate_timer % self.modulate_speed == 0:
 					self.modulate_position += self.modulate_step
+
 		else:
-			self.output_buffer = [0]*int(mix_rate/fps)
+			self.output_buffer = list(0 for i in range(int(mix_rate/fps)))
+
 		#vibrato handlers
 
 		if self.vibrato_timer == self.vibrato_init:
@@ -883,7 +885,7 @@ class replayer():
 			#go through each channel that had been processed
 			#and "mix" them together
 			channel = self.channels[i].output_buffer * self.mix_amp
-			mix_buffer = list((mix_buffer[i] + (channel[i])) for i in range(self.mixing_rate//math.ceil(fps)))
+			mix_buffer = list((mix_buffer[i] + (channel[i])) for i in range(int(self.mixing_rate/fps)))
 
 
 		mix_buffer = bytes((x & 0xff for x in (list(clamp(-128, 127, round(i)) for i in mix_buffer))))
