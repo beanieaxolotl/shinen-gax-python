@@ -719,6 +719,8 @@ class replayer():
 		self.pattern_count = self.song_data.get_properties().song_length
 		self.restart_pos   = self.song_data.get_properties().restart_position
 
+		self.mixing_rate  = self.song_data.get_properties().mixing_rate
+
 		self.num_channels = self.song_data.get_properties().channel_count
 
 		if allocate_fxch:
@@ -840,7 +842,7 @@ class replayer():
 							self.speed = [step_effect_param]*2
 
 
-	def tick(self, buffer, debug=False, export=False):
+	def tick(self, buffer, debug=False, export=False, fps=60):
 
 		self.timer += 1
 
@@ -874,12 +876,12 @@ class replayer():
 		else:
 			num_ch = self.num_channels
 
-		mix_buffer = list(0.00 for i in self.channels[0].output_buffer)
+		mix_buffer = list(0 for i in self.channels[0].output_buffer)
 		for i in range(0, num_ch):
 			#go through each channel that had been processed
 			#and "mix" them together
 			channel = self.channels[i].output_buffer
-			mix_buffer = list((mix_buffer[i] + (channel[i])) for i in range(len(channel)))
+			mix_buffer = list((mix_buffer[j] + (channel[j])) for j in range(self.mixing_rate//math.ceil(fps)))
 
 		mix_buffer = bytes((x & 0xff for x in (list(clamp(-128, 127, round(i)) for i in mix_buffer))))
 		self.output_buffer = list(x for x in mix_buffer)
@@ -893,16 +895,7 @@ class replayer():
 	def tick_channels(self, buffer, mixing_rate):
 
 		for i in range(self.num_channels):
-			self.channels[i].tick(self.gax_data.wave_bank, buffer, mixing_rate, gain=(self.mix_amp/100))		
-
-		mix_buffer = list(0.00 for i in self.channels[0].output_buffer)
-		for i in range(0, num_ch):
-			#go through each channel that had been processed
-			#and "mix" them together
-			channel = self.channels[i].output_buffer
-			mix_buffer = list((mix_buffer[i] + (channel[i])) for i in range(len(channel)))
-
-		mix_buffer = bytes((x & 0xff for x in (list(clamp(-128, 127, round(i)) for i in mix_buffer))))
+			self.channels[i].tick(self.gax_data.wave_bank, buffer, mixing_rate, gain=1)		
 
 		buffer.write(mix_buffer)
 
