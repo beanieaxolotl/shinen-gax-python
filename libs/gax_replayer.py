@@ -233,7 +233,7 @@ class channel:
 			self.volenv_lerp = 0
 
 
-	def tick_audio(self, mix_rate, wave_bank, stream, fps=60, gain=3, debug=False):
+	def tick_audio(self, mix_rate, wave_bank, stream, fps=60, gain=1, debug=False):
 
 		'''
 		current bugs:
@@ -399,7 +399,7 @@ class channel:
 					self.vol_slide_amount = 0
 
 				#apply mix volume / gain to our wave output
-				self.wave_output *= gain*self.mix_volume
+				self.wave_output *= gain 
 				#convert to a signed buffer list
 				self.output_buffer.append(self.wave_output)
 
@@ -408,7 +408,8 @@ class channel:
 				self.modulate_timer += 1
 				if self.modulate_timer % self.modulate_speed == 0:
 					self.modulate_position += self.modulate_step
-
+		else:
+			self.output_buffer = [0]*int(mix_rate/fps)
 		#vibrato handlers
 
 		if self.vibrato_timer == self.vibrato_init:
@@ -585,7 +586,7 @@ class channel:
 			self.tick_audio(mixing_rate, wave_bank, stream, fps=fps, gain=gain, debug=True)
 		else:
 			#render silence
-			self.output_buffer = [0]*int(mixing_rate/math.ceil(fps))
+			self.output_buffer = list(0 for i in range(int(mixing_rate/fps)))
 		
 		
 		if not self.delay_finished:
@@ -876,12 +877,14 @@ class replayer():
 		else:
 			num_ch = self.num_channels
 
+
 		mix_buffer = list(0 for i in self.channels[0].output_buffer)
 		for i in range(0, num_ch):
 			#go through each channel that had been processed
 			#and "mix" them together
-			channel = self.channels[i].output_buffer
-			mix_buffer = list((mix_buffer[j] + (channel[j])) for j in range(self.mixing_rate//math.ceil(fps)))
+			channel = self.channels[i].output_buffer * self.mix_amp
+			mix_buffer = list((mix_buffer[i] + (channel[i])) for i in range(self.mixing_rate//math.ceil(fps)))
+
 
 		mix_buffer = bytes((x & 0xff for x in (list(clamp(-128, 127, round(i)) for i in mix_buffer))))
 		self.output_buffer = list(x for x in mix_buffer)
