@@ -101,11 +101,11 @@ print("""
 			- Rebecca Sugar
 
 
-Experimental tool to rip/extract Shin'en GAX Sound Engine music files into .o/.nax files.
+Experimental tool to rip/extract Shin'en GAX Sound Engine music files into .o/.gax files.
 
 Nintendo, Game Boy, and Game Boy Advance are trademarks of Nintendo Co., Ltd.
 Nokia and N.Gage are trademarks of Nokia Corporation
-Original sound driver © 2001-2007, 2004-2009 Shin’en Multimedia/Bernhard Wodok. All rights reserved. Reimplemented in Python by beanieaxolotl, 2024
+Original sound driver © 2001-2007, 2004-2009 Shin’en Multimedia/Bernhard Wodok. All rights reserved. Reimplemented in Python by beanieaxolotl, 2025
 
 ===============================================================
 	""")
@@ -178,6 +178,6 @@ try:
 	g.close()
 
 except Exception as e:
-	print('Could not write .GAX file.')
+	print('Could not write .gax file.')
 	raise e
 print(output_name, "saved!")

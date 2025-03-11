@@ -1,6 +1,6 @@
-from libraries.shinen_gax import *
-from libraries.gax_wrapper import gax_replayer
-from libraries.general import sign_flip
+from libs.shinen_gax import *
+from libs.gax_wrapper import gax_replayer
+from libs.general import sign_flip
 import pyaudio
 import os
 import wave
