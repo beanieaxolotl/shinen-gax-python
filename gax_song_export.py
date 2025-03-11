@@ -42,7 +42,7 @@ def tick_GAX():
 
 	for i in range(gax_replayer.num_channels):
 		gax_replayer.channels[i].tick(i, gax_replayer, gax_obj.instrument_set, gax_obj.wave_set.wave_bank, stream, mixing_rate, fps)
-	output_buffer += gax_replayer.tick(stream, fps=fps, debug=True)
+	output_buffer += gax_replayer.tick(stream, debug=True)
 
 
 def setup_GAX(mus_path):

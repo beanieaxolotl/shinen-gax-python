@@ -584,8 +584,15 @@ class channel:
 					self.tick_perf_list(wave_bank, reset_volume=False)
 			else:
 				self.tick_perf_list(wave_bank, reset_volume=False)
-				
-			self.tick_audio(mixing_rate, wave_bank, stream, fps=fps, gain=gain, debug=True)
+			
+			try:
+				if replayer != None:
+					self.tick_audio(mixing_rate, wave_bank, stream, fps=fps, gain=gain*(replayer.mix_amp/513), debug=True)
+				else:
+					self.tick_audio(mixing_rate, wave_bank, stream, fps=fps, gain=gain, debug=True)
+			except Exception as e:
+				print(e)
+				exit()
 		else:
 			#render silence
 			self.output_buffer = list(0 for i in range(int(mixing_rate/fps)))
@@ -607,8 +614,6 @@ class channel:
 			pass
 
 		self.volenv_cur_vol += self.volenv_lerp
-		
-
 
 
 	def init_instr(self, instrument_set, instr_idx=1, semitone=0x31):
@@ -845,7 +850,7 @@ class replayer():
 							self.speed = [step_effect_param]*2
 
 
-	def tick(self, buffer, debug=False, export=False, fps=60):
+	def tick(self, buffer, debug=False, export=False):
 
 		self.timer += 1
 
@@ -881,12 +886,22 @@ class replayer():
 
 
 		mix_buffer = list(0 for i in self.channels[0].output_buffer)
+
 		for i in range(0, num_ch):
+
 			#go through each channel that had been processed
 			#and "mix" them together
-			channel = self.channels[i].output_buffer * self.mix_amp
-			mix_buffer = list((mix_buffer[i] + (channel[i])) for i in range(int(self.mixing_rate/fps)))
 
+			j = 0
+
+			#to do: in testing this is faster than using generators
+
+			for float_value in self.channels[i].output_buffer:
+				try:
+					mix_buffer[j] += float_value
+					j += 1
+				except:
+					pass
 
 		mix_buffer = bytes((x & 0xff for x in (list(clamp(-128, 127, round(i)) for i in mix_buffer))))
 		self.output_buffer = list(x for x in mix_buffer)
