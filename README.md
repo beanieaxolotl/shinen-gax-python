@@ -1,15 +1,14 @@
 # Shin'en GAX Sound Engine tools for Python
 
 This repo houses conversion and (un)packing tools for music and FX files made with Shin'en Multimedia's [GAX Sound Engine] library.  
-This also works with .gax/.o files made with NAX Sound Engine, which shares the same data structure with GAX.  
-Since this is a complete rewrite, some things in the original repo (i.e XM to GAX) are nonexistent, but this doesn't mean I won't implement them in the future.
+This also works with .gax/.o files made with the NAX Sound Engine, which shares the same data structure with GAX.  
 
 
 ## Tools:
 - Gaxripper (v2) - A command line tool to rip and reconstruct GAX Sound Engine music data from Game Boy Advance ROMs.  
   This tool, like the GAX library script itself, is meant for GAX Sound Engine v3.05+, but support for anything below is flaky at best. This program creates the .gax files that are used by a few scripts in this repo.
 
-- Waveform dumper - Allows one to dump waveform data from GAX blobs into .wav files.
+- Waveform dumper - Allows one to dump waveform data from GAX files into .wav files.
 
 - Furnace clipboard converter - This converts the GAX pattern data in a .gax/.o file into the clipboard format used by tildearrow's [Furnace].
 
@@ -17,15 +16,15 @@ Since this is a complete rewrite, some things in the original repo (i.e XM to GA
 
 - GAX library detection - Detects the GAX Sound Engine library (+ functions from libgax.a) in a Game Boy Advance ROM.
 
-- GAX song renderer - Renders a specified track from a GAX blob (.gax), with the option of changing the number of loops and outputting the track at 48khz (DVD quality). As of right now it processes the track at 1x speed, which is very slow..
+- GAX song renderer - Renders a specified track from a GAX file, with the option of changing the number of loops and outputting the track at 48khz (DVD quality). As of right now it processes the track at 1x speed, which is very slow..
 
 ## To do:
 - Proper support for earlier revisions of GAX v3, GAX v2 and v1 (if possible)
-- Implement .ELF file reconstruction for GBA decompilation projects.
+- Implement .ELF object file reconstruction for GBA decompilation projects.
 
 ## In progress:
 - A tracker / sound editor for the GAX format implemented with pygame-ce, pyaudio and MyreMylar's [pygame_gui]
-- An accurate replayer engine for the GAX format, allowing for high-quality listening to tracks. GAX playback on the GBA is used as reference to gauge accuracy. There are a few bugs regarding accuracy, but most tracks that I have tried play close to perfect, aside from vibrato and tone portamento being a bit imperfect. I have not yet been able to get replayer playback functions into a library as all attempts (at least for me) have failed, so setting it up will be a hassle, sorry.
+- An accurate replayer engine for the GAX format, allowing for high-quality listening to tracks. GAX playback on the GBA is used as reference to gauge accuracy. There are a few bugs regarding accuracy, but most tracks that I have tried play close to perfect, aside from vibrato and tone portamento being a bit imperfect.
 
 
 Credits:
