@@ -10,11 +10,6 @@ from .gax_constructors import wave_param
 '''
 To do:
 
-> mixing volume (100% accurate)
-	> exact volume ratio is unknown, but sampled intros are more listenable now
-
-> touch up tone portamento (95% accurate)
-> sustain point (100% accurate)
 > looping envelopes (100% accurate?)
 
 > vibrato support (33.3% accurate)
@@ -40,6 +35,9 @@ class channel:
 	def __init__(self):
 
 		self.timer = 0
+
+		#instrument indexing
+		self.instrument_idx = 0
 
 		#note delay
 		self.delay_tick_count = 0
@@ -205,11 +203,9 @@ class channel:
 
 
 			#sustain point handler
-
 			if self.volenv_idx-1 == self.volenv_pause_point: #when we reach the sustain point
 				self.volenv_pause = True
 				self.volenv_lerp = 0 # *stop* on the sustain point
-
 
 			#sustain / pause handling
 
@@ -239,7 +235,7 @@ class channel:
 		current bugs:
 		> envelope pause timing / note off timing is inconsistent during speed modulation (cases - Jazz Jackrabbit, SpongeBob: Lights Camera Pants)
 		> envelope looping is one tick faster (case - Iridion II)
-		> vibrato depth calculation is incorrect (cases - Camp Lazlo)
+		> vibrato depth calculation is *slightly* incorrect (cases - Camp Lazlo)
 		'''
 
 
@@ -247,7 +243,7 @@ class channel:
 
 		if self.use_vibrato:
 			if self.is_vibrato:
-				self.vibrato_step_rate = (self.vibrato_pitch/mix_rate*fps)
+				self.vibrato_step_rate = self.vibrato_pitch / (mix_rate/fps)
 
 		if self.wave_params != None:
 
@@ -265,22 +261,27 @@ class channel:
 				if not self.is_modulate:
 					self.wave_step_rate = (get_freq(get_period(
 										   (self.perf_semitone + (self.wave_params["finetune"]/32)) 
-										   + self.semitone)) / mix_rate) + self.vibrato_step_rate
+										   + self.semitone)) / mix_rate) 
 				else:
 					self.modulate_step_rate = (get_freq(get_period(
 										   (self.perf_semitone + (self.wave_params["finetune"]/32)) 
-										   + self.semitone)) / mix_rate) + self.vibrato_step_rate
+										   + self.semitone)) / mix_rate) 
 
 			else:
 
 				if not self.is_modulate:
 					self.wave_step_rate = (get_freq(get_period(
 									   self.perf_semitone + (self.wave_params["finetune"]/32)
-									   ))) / mix_rate + self.vibrato_step_rate
+									   ))) / mix_rate 
 				else:
 					self.modulate_step_rate = self.modulate_step + (get_freq(get_period(
 									   self.perf_semitone + (self.wave_params["finetune"]/32)
-									   ))) / mix_rate + self.vibrato_step_rate
+									   ))) / mix_rate 
+
+			if not self.is_modulate:
+				self.wave_step_rate += self.vibrato_step_rate
+			else:
+				self.modulate_step_rate += self.vibrato_step_rate
 
 
 			play_once = (self.wave_params["loop_start"] == 0 and self.wave_params["loop_end"] == 0)
@@ -368,7 +369,7 @@ class channel:
 				self.tick_volenv()
 
 				self.semitone += self.note_slide_amount/(mix_rate*(fps/1.875)/fps)   #cross checked with custom porta down tracks / Sigma Star Saga
-				self.semitone += self.tone_porta_lerp/(mix_rate/(fps*(fps/11.1)))    #cross checked with custom tone portamento tracks
+				self.semitone    += self.tone_porta_lerp/(mix_rate/fps)
 				self.step_volume += self.vol_slide_amount/(mix_rate/fps)
 
 				if self.is_tone_porta:
@@ -399,7 +400,7 @@ class channel:
 					self.vol_slide_amount = 0
 
 				#apply mix volume / gain to our wave output
-				self.wave_output *= gain 
+				self.wave_output *= (gain * self.mix_volume)
 				#convert to a signed buffer list
 				self.output_buffer.append(self.wave_output)
 
@@ -421,9 +422,9 @@ class channel:
 			self.vibrato_timer += 1
 
 			if self.is_vibrato:
-				self.vibrato_subtimer += 1*self.vibrato_speed
+				self.vibrato_subtimer += self.vibrato_speed
 				try:
-					self.vibrato_pitch = ((sine_table[self.vibrato_subtimer%64])/127) * (self.vibrato_depth/2.5)
+					self.vibrato_pitch = ((sine_table[self.vibrato_subtimer%64]) * self.vibrato_depth)>>8
 				except:
 					self.vibrato_pitch = 0
 
@@ -450,13 +451,13 @@ class channel:
 
 				if not cur_perf_row["fixed"]:
 					self.old_perf_semitone = self.perf_semitone
-					self.perf_semitone = cur_perf_row["note"] - 4 #apply note correction
-					self.perf_pitch = self.perf_semitone * 32 # set that as our perf pitch
+					self.perf_semitone     = cur_perf_row["note"] - 4 # apply note correction
+					self.perf_pitch        = self.perf_semitone * 32  # set that as our perf pitch
 				else:
 					self.old_perf_semitone = self.perf_semitone
-					self.perf_semitone = cur_perf_row["note"] - 2
-					self.perf_pitch = self.perf_semitone * 32
-					self.is_fixed = True
+					self.perf_semitone     = cur_perf_row["note"] - 2
+					self.perf_pitch        = self.perf_semitone * 32
+					self.is_fixed          = True
 
 
 			#wave slot idx
@@ -536,11 +537,13 @@ class channel:
 		self.perf_semitone = self.perf_pitch / 32 # the "normalized" semitone
 		self.perf_row_volume += self.perf_vol_slide_amount
 
+
 		#clamp perf row volume so we don't blow out everything
 		if self.perf_row_volume > 255:
 			self.perf_row_volume = 255
+
 		elif self.perf_row_volume < 0:
-			self.perf_row_volume = 0
+			self.perf_row_volume       = 0
 			self.perf_vol_slide_amount = 0
 			
 
@@ -549,7 +552,7 @@ class channel:
 			if self.perf_row_timer % self.perf_row_speed == 0:
 				#fixes instrument 48 in Iridion II (prototype) ~ "NEW GAME"	
 				self.perf_note_slide_amount = 0 #don't apply pitch slides if there are none
-				self.perf_vol_slide_amount = 0
+				self.perf_vol_slide_amount  = 0
 				tick_self()
 
 
@@ -627,6 +630,7 @@ class channel:
 			
 			if instr_idx not in [0, None]:
 
+				self.instrument_idx  = instr_idx
 				self.volenv_pause    = False
 				self.timer           = 0 #reset timer
 				self.instrument_data = instrument_set[instr_idx] #get the required data
@@ -696,10 +700,6 @@ class channel:
 
 class replayer():
 
-	'''
-	to do:
-	> mixing volume is inaccurate in very rare cases (i.e sampled intros)
-	'''
 
 	def __init__(self, gax_obj, song_idx = 0, allocate_fxch = False, fx_obj = None):
 
@@ -822,7 +822,7 @@ class replayer():
 							#the number of ticks should remain the same length, even during one-note sweeps
 							try:
 								lerp = new_semitone - self.channels[channel].old_semitone
-								self.channels[channel].tone_porta_lerp = lerp / (step_effect_param*self.speed[0])
+								self.channels[channel].tone_porta_lerp = lerp / step_effect_param
 							except:
 								self.channels[channel].tone_porta_lerp = 0
 
@@ -939,3 +939,4 @@ class replayer():
 			raise Exception("Can't stop SFX in a nonexistent FX channel")
 
 		self.channels[self.num_channels+fxch] = channel()
+		self.channels[self.num_channels+fxch].instrument_idx = 0
