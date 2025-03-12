@@ -39,12 +39,22 @@ class gax_replayer:
 				rate=self.mixing_rate,
 		output=True)	
 
+
+	## useful functions
+
+	def get_current_pattern(self):
+		return self.vars.cur_pat
+
+	def get_current_step(self):
+		return self.vars.cur_step
+
+
 	# API reimplementations
 
 	## GAX2_new
 
 	def GAX2_calc_mem(self):
-		return get_RAM_usage(mixing_rate  = self.mixing_rate, 
+		return get_ram_usage(mixing_rate  = self.mixing_rate, 
 			mus_channels = self.vars.num_channels, 
 			fx_channels  = self.fxch_count)
 
