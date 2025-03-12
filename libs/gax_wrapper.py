@@ -65,7 +65,7 @@ class gax_replayer:
 	def GAX_play(self, debug = False):
 
 		for ch in range(self.vars.num_channels):
-			self.vars.channels[ch].tick(0,self.vars,
+			self.vars.channels[ch].tick(ch,self.vars,
 				self.module_data.instrument_set, 
 				self.module_data.wave_set.wave_bank, 
 				self.stream, self.mixing_rate, self.fps,
