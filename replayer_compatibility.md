@@ -46,5 +46,5 @@
 |0x0B     |Volume slide down               |100%                                                |
 |0x0C     |Set volume                      |100%                                                |
 |0x0D     |Break pattern                   |100% - Param is ignored like the actual GAX         |
-|0xED     |Delay note                      |100%                                                |
+|0xED     |Delay note                      |Broken due to regression                            |
 |0x0F     |Set speed                       |100%                                                |
