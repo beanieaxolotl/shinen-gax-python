@@ -315,14 +315,15 @@ class channel:
 						if not self.is_modulate:
 
 							#looping handlers
-							if (self.wave_position >= len(wave_bank[self.wave_idx])
-								or self.wave_position >= self.wave_params["loop_end"]):
+							if (self.wave_position > len(wave_bank[self.wave_idx])
+								or self.wave_position > self.wave_params["loop_end"]):
 								if self.wave_params["ping_pong"]:
 									#bidi loop
 									self.wave_direction = -1
 								else:
 									#forward loop
-									self.wave_position = self.wave_params["loop_start"]
+									#adapted from https://github.com/Prezzodaman/pymod
+									self.wave_position -= self.wave_params["loop_end"] - self.wave_params["loop_start"]
 
 							if (self.wave_position <= 0 or self.wave_position <= self.wave_params["loop_start"]):
 								if self.wave_params["ping_pong"]:
