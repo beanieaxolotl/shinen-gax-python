@@ -150,7 +150,7 @@ class channel:
 
 	def tick_volenv(self):
 
-		#to do: Iridion II - Instrument #40's volume envelope is slightly faster than actual hardware
+		#to do: Iridion II - Instrument #40's volume envelope is slightly faster than GAX playback
 
 		if len(self.volenv_buffer) > 1: #only read in volenv if there is any data
 
@@ -336,7 +336,7 @@ class channel:
 
 							if (self.modulate_final_pos >= len(wave_bank[self.wave_idx])
 							or self.modulate_final_pos >= self.wave_params["loop_end"]):
-								#only forward loops are supported in modulation
+								#this is incorrect, pls fix me
 								self.modulate_final_pos %= len(wave_bank[self.wave_idx])
 
 
@@ -358,6 +358,9 @@ class channel:
 
 				else:
 
+					# to do: modulation looping is a simple ping-pong loop here
+					# this shouldn't be too hard to implement.
+
 					#clamping
 					if self.modulate_position >= len(wave_bank[self.wave_idx]):
 						self.modulate_position = len(wave_bank[self.wave_idx]) - 1
@@ -377,6 +380,10 @@ class channel:
 
 				if self.is_tone_porta:
 					if int(self.semitone*32) == self.target_semitone*32:
+						# this multiplies the two vals by 32 since
+						# if we just naively check the semitones here,
+						# it works, but downwards portamentos that range 1 semitone
+						# just unnaturally "snap" to the target semitone
 						self.tone_porta_lerp = 0
 						self.is_tone_porta = False
 						self.semitone = self.target_semitone
@@ -411,6 +418,7 @@ class channel:
 			if self.is_modulate:
 				self.modulate_timer += 1
 				if self.modulate_timer % self.modulate_speed == 0:
+					#update the modulator position after X steps
 					self.modulate_position += self.modulate_step
 
 		else:
@@ -427,6 +435,7 @@ class channel:
 			if self.is_vibrato:
 				self.vibrato_subtimer += self.vibrato_speed
 				try:
+					# to do: this makes some songs sound more drunken than intended
 					self.vibrato_pitch = ((sine_table[self.vibrato_subtimer%64]) * self.vibrato_depth)>>8
 				except:
 					self.vibrato_pitch = 0
