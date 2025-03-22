@@ -17,8 +17,9 @@ To do:
 	> speed / wait (accurate)
 
 > wavetable modulation synthesis (95% done)
-	> looping is slightly imperfect
+	> no bidirectional looping yet
 	> (use cases: Shin'en Multimedia intro jingle ~ Iridion II, Jackie Chan Adventures)
+
 '''
 
 
@@ -57,10 +58,10 @@ class channel:
 		self.note_slide_amount      = 0
 		self.perf_note_slide_amount = 0
 
-		self.old_semitone        = 0 #to allow for pitch slides
-		self.target_semitone     = 0 
-		self.is_tone_porta       = False
-		self.tone_porta_lerp     = 0
+		self.old_semitone             = 0 #to allow for pitch slides
+		self.target_semitone          = 0 
+		self.is_tone_porta            = False
+		self.tone_porta_lerp          = 0
 
 		self.vol_slide_amount      = 0
 		self.perf_vol_slide_amount = 0
@@ -325,6 +326,7 @@ class channel:
 									#adapted from https://github.com/Prezzodaman/pymod
 									self.wave_position -= self.wave_params["loop_end"] - self.wave_params["loop_start"]
 
+
 							if (self.wave_position <= 0 or self.wave_position <= self.wave_params["loop_start"]):
 								if self.wave_params["ping_pong"]:
 									#return from backwards reading
@@ -369,12 +371,12 @@ class channel:
 
 				self.tick_volenv()
 
-				self.semitone += self.note_slide_amount/(mix_rate*(fps/1.875)/fps)   #cross checked with custom porta down tracks / Sigma Star Saga
+				self.semitone    += self.note_slide_amount/(mix_rate*(fps/1.875)/fps)   #cross checked with custom porta down tracks / Sigma Star Saga
 				self.semitone    += self.tone_porta_lerp/(mix_rate/fps)
 				self.step_volume += self.vol_slide_amount/(mix_rate/fps)
 
 				if self.is_tone_porta:
-					if int(self.semitone) == self.target_semitone:
+					if int(self.semitone*32) == self.target_semitone*32:
 						self.tone_porta_lerp = 0
 						self.is_tone_porta = False
 						self.semitone = self.target_semitone
@@ -591,7 +593,7 @@ class channel:
 			
 			try:
 				if replayer != None:
-					self.tick_audio(mixing_rate, wave_bank, stream, fps=fps, gain=gain*(replayer.mix_amp/513), debug=True)
+					self.tick_audio(mixing_rate, wave_bank, stream, fps=fps, gain=gain*(replayer.mix_amp>>8), debug=True)
 				else:
 					self.tick_audio(mixing_rate, wave_bank, stream, fps=fps, gain=gain, debug=True)
 			except Exception as e:
@@ -819,11 +821,9 @@ class replayer():
 								new_semitone = 0
 								self.channels[channel].target_semitone = new_semitone
 
-							#right now this behaves similar to XM's tone portamento, which is not how GAX does it
-							#the number of ticks should remain the same length, even during one-note sweeps
 							try:
-								lerp = new_semitone - self.channels[channel].old_semitone
-								self.channels[channel].tone_porta_lerp = lerp / step_effect_param
+								lerp = (new_semitone - self.channels[channel].old_semitone) / step_effect_param
+								self.channels[channel].tone_porta_lerp = lerp 
 							except:
 								self.channels[channel].tone_porta_lerp = 0
 
