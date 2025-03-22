@@ -7,7 +7,7 @@
 |Wave parameters                 |95% - There are a few edge cases that prevent this from being fully accurate       |
 |Vibrato                         |66% - Vibrato depth is inaccurate (it is either too deep or shallow)               |
 |Perf list handling              |98% - Perf list delay is untested                                                  |
-|Waveform modulation             |95% - Looping behavior is imperfect                                                |
+|Waveform modulation             |95% - Looping behavior is incorrect                                                |
 
 
 ### Volume envelope handling
@@ -40,7 +40,7 @@
 |0x00     |No effect                       |N/A                                                 |
 |0x01     |Portamento up                   |100%                                                |
 |0x02     |Portamento down                 |100%                                                |
-|0x03     |Tone portamento                 |75%  - One note slides are too fast                 |
+|0x03     |Tone portamento                 |100%                                                |
 |0x07     |Speed modulation                |100%                                                |
 |0x0A     |Volume slide up                 |100%                                                |
 |0x0B     |Volume slide down               |100%                                                |
