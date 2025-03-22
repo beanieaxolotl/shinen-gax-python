@@ -602,7 +602,7 @@ class channel:
 			
 			try:
 				if replayer != None:
-					self.tick_audio(mixing_rate, wave_bank, stream, fps=fps, gain=gain*(replayer.mix_amp>>8), debug=True)
+					self.tick_audio(mixing_rate, wave_bank, stream, fps=fps, gain=gain*(replayer.mix_amp/512), debug=True)
 				else:
 					self.tick_audio(mixing_rate, wave_bank, stream, fps=fps, gain=gain, debug=True)
 			except Exception as e:
