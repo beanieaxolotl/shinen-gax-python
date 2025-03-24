@@ -95,7 +95,7 @@ class channel:
 		self.modulate_subposition = 0
 		self.modulate_final_pos   = 0
 		self.modulate_step_rate   = 0
-
+		self.modulate_direction   = 1
 
 		## vibrato controls
 		self.use_vibrato      = False #to use vibrato at all
@@ -249,7 +249,8 @@ class channel:
 		if self.wave_params != None:
 
 			#get modulation values
-			self.is_modulate = self.wave_params['modulate']
+			play_once = (self.wave_params["loop_end"] - self.wave_params["loop_start"] < 0)
+			self.is_modulate = self.wave_params['modulate'] and not play_once
 			if self.is_modulate:
 				self.modulate_size  = self.wave_params['modulate_size']
 				self.modulate_step  = self.wave_params['modulate_step']
@@ -284,8 +285,6 @@ class channel:
 			else:
 				self.modulate_step_rate += self.vibrato_step_rate
 
-
-			play_once = (self.wave_params["loop_start"] == 0 and self.wave_params["loop_end"] == 0)
 
 			for i in range(int(mix_rate/fps)):
 
@@ -334,10 +333,11 @@ class channel:
 
 						else:
 
-							if (self.modulate_final_pos >= len(wave_bank[self.wave_idx])
-							or self.modulate_final_pos >= self.wave_params["loop_end"]):
-								#this is incorrect, pls fix me
-								self.modulate_final_pos %= len(wave_bank[self.wave_idx])
+							if self.modulate_final_pos > self.wave_params["loop_end"]-1:
+								self.modulate_direction = -1
+
+							if self.modulate_final_pos < self.wave_params["loop_start"]:
+								self.modulate_direction = 1
 
 
 				else:
@@ -356,21 +356,6 @@ class channel:
 						or self.wave_position < 0):
 						self.wave_position = 0
 
-				else:
-
-					# to do: modulation looping is a simple ping-pong loop here
-					# this shouldn't be too hard to implement.
-
-					#clamping
-					if self.modulate_position >= len(wave_bank[self.wave_idx]):
-						self.modulate_position = len(wave_bank[self.wave_idx]) - 1
-					elif self.modulate_position < 0:
-						self.modulate_position = 0
-					
-					#failsafe checking if all else fails
-					if (self.modulate_position >= len(wave_bank[self.wave_idx]) 
-						or self.modulate_position < 0):
-						self.modulate_position = 0
 
 				self.tick_volenv()
 
@@ -419,7 +404,7 @@ class channel:
 				self.modulate_timer += 1
 				if self.modulate_timer % self.modulate_speed == 0:
 					#update the modulator position after X steps
-					self.modulate_position += self.modulate_step
+					self.modulate_position += self.modulate_step*self.modulate_direction
 
 		else:
 			self.output_buffer = list(0 for i in range(int(mix_rate/fps)))
@@ -550,7 +535,6 @@ class channel:
 		self.perf_row_volume += self.perf_vol_slide_amount
 
 
-		#clamp perf row volume so we don't blow out everything
 		if self.perf_row_volume > 255:
 			self.perf_row_volume = 255
 
@@ -562,7 +546,6 @@ class channel:
 		if self.perf_row_speed != 0:
 			#only tick the instrument if the row speed is not 0
 			if self.perf_row_timer % self.perf_row_speed == 0:
-				#fixes instrument 48 in Iridion II (prototype) ~ "NEW GAME"	
 				self.perf_note_slide_amount = 0 #don't apply pitch slides if there are none
 				self.perf_vol_slide_amount  = 0
 				tick_self()
@@ -583,14 +566,9 @@ class channel:
 			if self.timer == 0 and self.volenv_has_looped == False:
 				#start from defined wave position
 				try:
-					if not self.is_modulate:
-						self.wave_position = self.instrument_data.wave_params[self.perf_row_buffer[self.perf_row_idx]["wave_slot_id"] - 1]["start_position"]
-					else:
-						self.modulate_position = self.instrument_data.wave_params[self.perf_row_buffer[self.perf_row_idx]["wave_slot_id"] - 1]["start_position"]
-
+					self.wave_position = self.instrument_data.wave_params[self.perf_row_buffer[self.perf_row_idx]["wave_slot_id"] - 1]["start_position"]
 				except:
 					self.wave_position = 0 #correct if possible
-					self.modulate_position = 0
 
 			if major_version > 2:
 				if minor_version > 3:
@@ -642,6 +620,12 @@ class channel:
 			
 			if instr_idx not in [0, None]:
 
+				self.modulate_timer       = 0
+				self.modulate_position    = 0
+				self.modulate_subposition = 0
+				self.modulate_final_pos   = 0
+				self.modulate_direction   = 1
+
 				self.instrument_idx  = instr_idx
 				self.volenv_pause    = False
 				self.timer           = 0 #reset timer
@@ -651,9 +635,8 @@ class channel:
 			self.old_semitone = self.semitone
 			self.semitone     = semitone
 
-			if instr_idx not in [0, None]:
 
-				self.modulate_timer = 0
+			if instr_idx not in [0, None]:
 
 				self.use_vibrato       = False 
 				self.vibrato_step_rate = 0 #do not carry the vibrato from
@@ -774,6 +757,7 @@ class replayer():
 		if step_data != 0:
 
 			if step_data.semitone not in [None, gax.step_type(0x1)]:
+
 				self.channels[channel].target_semitone = step_data.semitone+self.cur_pat_data[channel][1]
 
 				if step_data.effect_type == gax.step_effect(0xe):
