@@ -250,7 +250,8 @@ class channel:
 
 			#get modulation values
 			play_once = (self.wave_params["loop_end"] - self.wave_params["loop_start"] < 0)
-			self.is_modulate = self.wave_params['modulate'] and not play_once
+			self.is_modulate = (self.wave_params['modulate'] and not play_once 
+								and self.wave_params['modulate_speed'] > 0)
 			if self.is_modulate:
 				self.modulate_size  = self.wave_params['modulate_size']
 				self.modulate_step  = self.wave_params['modulate_step']
@@ -578,14 +579,11 @@ class channel:
 			else:
 				self.tick_perf_list(wave_bank, reset_volume=False)
 			
-			try:
-				if replayer != None:
-					self.tick_audio(mixing_rate, wave_bank, stream, fps=fps, gain=gain*(replayer.mix_amp/512), debug=True)
-				else:
-					self.tick_audio(mixing_rate, wave_bank, stream, fps=fps, gain=gain, debug=True)
-			except Exception as e:
-				print(e)
-				exit()
+			if replayer != None:
+				self.tick_audio(mixing_rate, wave_bank, stream, fps=fps, gain=gain*(replayer.mix_amp/512), debug=True)
+			else:
+				self.tick_audio(mixing_rate, wave_bank, stream, fps=fps, gain=gain, debug=True)
+
 		else:
 			#render silence
 			self.output_buffer = list(0 for i in range(int(mixing_rate/fps)))
