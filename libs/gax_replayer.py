@@ -16,9 +16,8 @@ To do:
 	> depth (figure out proper scaling)
 	> speed / wait (accurate)
 
-> wavetable modulation synthesis (95% done)
-	> no bidirectional looping yet
-	> (use cases: Shin'en Multimedia intro jingle ~ Iridion II, Jackie Chan Adventures)
+> wavetable modulation synthesis (100% done)
+	> slightly crackly backwards handling
 
 '''
 
@@ -236,7 +235,7 @@ class channel:
 		current bugs:
 		> envelope pause timing / note off timing is inconsistent during speed modulation (cases - Jazz Jackrabbit, SpongeBob: Lights Camera Pants)
 		> envelope looping is one tick faster (case - Iridion II)
-		> vibrato depth calculation is *slightly* incorrect (cases - Camp Lazlo)
+		> vibrato depth calculation is incorrect (cases - most games)
 		'''
 
 
