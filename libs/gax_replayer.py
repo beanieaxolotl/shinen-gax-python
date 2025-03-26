@@ -248,9 +248,12 @@ class channel:
 
 		if self.wave_params != None:
 
+			# determine loop outcome from loop points
+			is_invalid_loop = (self.wave_params["loop_end"] - self.wave_params["loop_start"] < 0)
+			play_once = (self.wave_params["loop_end"] == 0 and self.wave_params["loop_start"] == 0)
+
 			#get modulation values
-			play_once = (self.wave_params["loop_end"] - self.wave_params["loop_start"] < 0)
-			self.is_modulate = (self.wave_params['modulate'] and not play_once 
+			self.is_modulate = (self.wave_params['modulate'] and not is_invalid_loop
 								and self.wave_params['modulate_speed'] > 0)
 			if self.is_modulate:
 				self.modulate_size  = self.wave_params['modulate_size']
