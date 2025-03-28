@@ -5,7 +5,7 @@ import math
 from . import gba
 
 from .gax_enums import (
-	step_type, perf_row_effect, step_effect
+	perf_row_effect, step_effect
 )
 from .gax_constants import (
 	mixing_rates, note_names, max_channels, min_channels, max_fx_channels, libgax_consts
@@ -14,86 +14,46 @@ from .gax_constants import (
 
 class step_command:
 	def __init__(self):
-		self.semitone = None
-		self.instrument = None
-		self.effect_type = None
-		self.effect_param = None
+		self.semitone     = 0
+		self.instrument   = 0
+		self.effect_type  = step_effect(0x0)
+		self.effect_param = 0
 
 	def pack_command(self):
 		packed_cmd = b''
 
-		#all nones get turned into zeroes
+		if self.semitone > 0 and self.instrument >= 0 and self.effect_type.value == 0 and self.effect_param == 0:
+			# note / note off (no effect)
+			packed_cmd += struct.pack('<2B', self.semitone ^ 0x80, self.instrument) #upper bit gets set here
 
-		if self.effect_type != None:
-			try:
-				effect_type = self.effect_type.value
-			except:
-				effect_type = self.effect_type # handler for unknown GAX effects (they're still saved btw)
-		else:
-			effect_type = None
-
-		if self.effect_param != None:
-			effect_param = self.effect_param
-		else:
-			effect_param = None
-
-		#correction of effect param for note delay command
-		if self.effect_type != None and type(self.effect_type) != int:
-			if self.effect_type.value == 0xe:
-				if self.effect_param > 0xf:
-					raise ValueError("Malformed note delay effect")
-				effect_param = self.effect_param + 0xd0	
-
-
-		if self.semitone != None and self.instrument != None and self.effect_type == None and self.effect_param == None:
-			if self.semitone != step_type(0x1): #note (no effect)
-				packed_cmd += struct.pack('<2B', self.semitone ^ 0x80, self.instrument) #upper bit gets set here
-			else: #note off (no effect)
-				packed_cmd += struct.pack('<2B', self.semitone.value ^ 0x80, self.instrument) #upper bit gets set here
-
-		elif self.semitone == None and self.instrument == None and self.effect_type != None and self.effect_param != None:
-			#effect only
+		elif self.semitone == 0 and self.instrument == 0 and self.effect_type.value > 0 and self.effect_param >= 0:
+			# effect only
 			packed_cmd += b'\xfa'
-			packed_cmd += struct.pack('<2B', effect_type, effect_param)
+			packed_cmd += struct.pack('<2B', self.effect_type.value, self.effect_param)
 
-		elif self.semitone == None and self.instrument == None and self.effect_type == None and self.effect_param == None:
+		elif self.semitone == 0 and self.instrument == 0 and self.effect_type.value == 0 and self.effect_param == 0:
 			packed_cmd += b'\x80'
 
 		else:
-			if self.semitone != step_type(0x1): #note off (with effect)
-				try:
-					packed_cmd += struct.pack('<4B', self.semitone, self.instrument, effect_type, effect_param)
-				except:
-					print(self.semitone, self.instrument, effect_type, effect_param)
-					exit()
-			else: #note (with effect)
-				packed_cmd += struct.pack('<4B', self.semitone.value, self.instrument, effect_type, effect_param)
+			# to do: raise a proper exception here
+			# note / note off (with effect)
+			packed_cmd += struct.pack('<4B', self.semitone, self.instrument, self.effect_type.value, self.effect_param)
+
 
 		return packed_cmd
 
 
-#main functions
+## main functions ##
+
 def unpack_steps(data, offset, step_count):	
+
 	'''
 	Unpack step data from an offset. The step count should be set to the song's step count.
 	'''
 
 	def setEffectData(step, data, offset):
-
-		try:
-			if data[offset] == 0xe and data[offset+1] >> 4 != 0xd:
-				step.effect_type = data[offset]
-			else:
-				step.effect_type = step_effect(data[offset])
-		except:
-			step.effect_type = data[offset]
-
+		step.effect_type  = step_effect(data[offset])
 		step.effect_param = data[offset+1]
-
-		## note delay handler
-		if step.effect_type == step_effect(0xe):
-			step.effect_param &= 0x0f
-
 
 	if general.get_bool_from_num(data[offset]) == True:
 		return [step_command() for n in range(step_count)] #create a new empty pattern instead of outputting a None object
@@ -134,7 +94,7 @@ def unpack_steps(data, offset, step_count):
 			if (data[offset] & 0x7f) > 1: #strip away the first bit
 				unpacked_step.semitone = data[offset] & 0x7f #note + instrument
 			else:
-				unpacked_step.semitone = step_type.note_off  #note off + instrument
+				unpacked_step.semitone = 1 #note off + instrument
 
 			unpacked_step.instrument = data[offset + 1]
 
@@ -146,7 +106,7 @@ def unpack_steps(data, offset, step_count):
 			if data[offset] > 1:
 				unpacked_step.semitone = data[offset] #note + effect data
 			else:
-				unpacked_step.semitone = step_type.note_off #note off + effect data
+				unpacked_step.semitone = 1 #note off + effect data
 
 			unpacked_step.instrument = data[offset + 1]
 			setEffectData(unpacked_step, data, offset+2)
@@ -166,10 +126,10 @@ def pack_steps(step_data):
 	'''
 
 	def is_empty(command):
-		return(command.semitone == None and 
-			   command.instrument == None and 
-			   command.effect_type == None and 
-			   command.effect_param == None)
+		return(command.semitone == 0 and 
+			   command.instrument == 0 and 
+			   command.effect_type.value == 0 and 
+			   command.effect_param == 0)
 
 	#check for completely empty patterns
 	rest_counter = 0
@@ -337,7 +297,6 @@ class song_data:
 
 	'''
 
-
 	def __init__(self, data, offset, is_gax_gba = False, unpack = True, step_count=64, channel_count=6):
 
 		self.properties = song_properties(data, offset, is_gax_gba, unpack, step_count, channel_count)
@@ -492,7 +451,7 @@ class song_data:
 		Converts internal song metadata back into a GAX header define
 		'''
 		header = re.match(r"\"(.+)?\" © (.+)", self.song_metadata_field).groups()[0]
-		header = re.sub(r"([_\'.\x92!])", "", header, 0, re.MULTILINE)
+		header = re.sub(r"([_\'.\x92!\/])", "", header, 0, re.MULTILINE)
 
 		if song_prefix:
 			header = "SONG_Song_" + re.sub(r"([- ])", "_", header, 0, re.MULTILINE)
@@ -1156,7 +1115,7 @@ def pack_GAX_file(gax_module, compile_object=False, blob_offset=0):
 		pass
 
 	else:
-		#otherwise just create the NAX file header.
+		#otherwise just create the .gax file header.
 		#the zero padding is a placeholder for the song property pointers
 		song_count = gax_module.get_song_count()
 		if song_count == 0:
@@ -1240,7 +1199,7 @@ def pack_GAX_file(gax_module, compile_object=False, blob_offset=0):
 	while general.is_dword_aligned(len(output_stream)+blob_offset) != True:
 		output_stream += b'\x00'
 
-	wave_bank_end_pointer = len(output_stream)+blob_offset #internally called "gaxSong_nullwaves"
+	wave_bank_end_pointer = len(output_stream)+blob_offset # aka null waves
 	output_stream += struct.pack('<2L', wave_pointers[0][0], wave_pointers[0][1])
 	wave_bank_pointer = len(output_stream)+blob_offset
 
@@ -1263,7 +1222,7 @@ def pack_GAX_file(gax_module, compile_object=False, blob_offset=0):
 		for song in gax_module.song_bank["songs"]:
 
 			sequence_pointer = len(output_stream)+blob_offset
-			track_data = song["songdata"].pack_song_data() # these are called "gaxSongXYZ_tracks"
+			track_data = song["songdata"].pack_song_data() # these are internally called tracks
 			exp_auth = (
 				'"' + song["songname"] + '" © ' + gax_module.get_auth()
 				).encode('iso-8859-1') #exported metadata string
@@ -1313,6 +1272,7 @@ def pack_GAX_file(gax_module, compile_object=False, blob_offset=0):
 				channel_address_table_bytes += address.to_bytes(4, byteorder='little', signed=False)
 
 			while len(channel_address_table_bytes) != 0xa8:
+				# to do: some data related to playback is stored here
 				channel_address_table_bytes += b'\x00'*4
 
 			output_stream += channel_address_table_bytes
@@ -1377,7 +1337,7 @@ def get_GAX_library(rom):
 
 	version_str = get_GAX_version(rom)
 	if version_str == None:
-		raise ValueError("Specified ROM has no GAX version string")
+		raise Exception("Specified ROM has no GAX version string")
 
 	gax_library = {
 		"version_str": version_str.decode('iso-8859-1'),

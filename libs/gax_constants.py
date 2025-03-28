@@ -1,8 +1,8 @@
 mixing_rates = [5735, 9079, 10513, 11469, 13380, 15769, 18158, 21025, 26760, 31537, 36316, 40138, 42049]
-note_names = ['C-', 'C#', 'D-', 'D#', 'E-', 'F-', 'F#', 'G-', 'G#', 'A-', 'A#', 'B-']
+note_names   = ['C-', 'C#', 'D-', 'D#', 'E-', 'F-', 'F#', 'G-', 'G#', 'A-', 'A#', 'B-']
 
-max_channels = 32
-min_channels = 0
+max_channels    = 32
+min_channels    = 0
 max_fx_channels = 8 #confirmed by GAX replayer ROMs in the WayForward lot
 
 sine_table = [ #Ripped from GAX Sound Engine 3.05 (Aug 13 2003)

@@ -618,7 +618,7 @@ class channel:
 			self.volenv_note_off    = False
 			self.volenv_turning_off = False
 			
-			if instr_idx not in [0, None]:
+			if instr_idx > 0:
 
 				self.modulate_timer       = 0
 				self.modulate_position    = 0
@@ -636,7 +636,7 @@ class channel:
 			self.semitone     = semitone
 
 
-			if instr_idx not in [0, None]:
+			if instr_idx > 0:
 
 				self.use_vibrato       = False 
 				self.vibrato_step_rate = 0 #do not carry the vibrato from
@@ -756,18 +756,17 @@ class replayer():
 
 		if step_data != 0:
 
-			if step_data.semitone not in [None, gax.step_type(0x1)]:
+			if step_data.semitone > 1:
 
 				self.channels[channel].target_semitone = step_data.semitone+self.cur_pat_data[channel][1]
 
-				if step_data.effect_type == gax.step_effect(0xe):
-					self.channels[channel].delay_tick_count = step_data.effect_param
+				if (step_data.effect_type.value == 0xe
+					and (step_data.effect_param >> 4) == 0xd):
+					self.channels[channel].delay_tick_count = step_data.effect_param & 0x0f
 					self.channels[channel].delay_timer = 0
 					self.channels[channel].delay_finished = False
 				else:
 					self.channels[channel].delay_finished = True
-
-				if step_data.effect_type != gax.step_effect(0xe):
 					self.channels[channel].init_instr(self.gax_data.instrument_set, instr_idx=step_data.instrument, semitone=self.channels[channel].target_semitone)
 
 				#if a set volume command is not present:
@@ -785,63 +784,57 @@ class replayer():
 					self.channels[channel].tone_porta_lerp = 0
 
 
-			if step_data.semitone == gax.step_type(0x1):
+			if step_data.semitone == 1:
 				self.channels[channel].volenv_note_off = True
 
 
-			if step_data.effect_param == None:
-				step_effect_param = 0
-			else:
-				step_effect_param = step_data.effect_param
+			if step_data.effect_type.value > 0:
 
-			if step_data.effect_type != None:
+				match step_data.effect_type.value: #preferrable to writing
+					                               #step_data.effect_type.value over and over
+					case 0x1: #pitch slide up
+						self.channels[channel].note_slide_amount = step_data.effect_param
 
-				if type(step_data.effect_type) != int:
-
-					match step_data.effect_type.value: #preferrable to writing
-						                               #step_data.effect_type.value over and over
-						case 0x1: #pitch slide up
-							self.channels[channel].note_slide_amount = step_effect_param
-
-						case 0x2: #pitch slide down
-							self.channels[channel].note_slide_amount = -step_effect_param
+					case 0x2: #pitch slide down
+						self.channels[channel].note_slide_amount = -step_data.effect_param
 
 
-						case 0x3: #tone portamento
+					case 0x3: #tone portamento
 
-							new_semitone = self.channels[channel].semitone
-							if step_data.semitone == None:
-								new_semitone = 0
-								self.channels[channel].target_semitone = new_semitone
+						new_semitone = self.channels[channel].semitone
 
-							try:
-								lerp = (new_semitone - self.channels[channel].old_semitone) / step_effect_param
-								self.channels[channel].tone_porta_lerp = lerp 
-							except:
-								self.channels[channel].tone_porta_lerp = 0
+						if step_data.semitone == 0:
+							new_semitone = 0
+							self.channels[channel].target_semitone = new_semitone
 
-							self.channels[channel].is_tone_porta = True
-							self.channels[channel].semitone = self.channels[channel].old_semitone
+						try:
+							lerp = (new_semitone - self.channels[channel].old_semitone) / step_data.effect_param
+							self.channels[channel].tone_porta_lerp = lerp 
+						except:
+							self.channels[channel].tone_porta_lerp = 0
+
+						self.channels[channel].is_tone_porta = True
+						self.channels[channel].semitone = self.channels[channel].old_semitone
 
 
-						case 0x7: #speed modulation
-							self.speed = [step_effect_param & 0xf,
-										  step_effect_param >> 4]
+					case 0x7: #speed modulation
+						self.speed = [step_data.effect_param & 0xf,
+									  step_data.effect_param >> 4]
 
-						case 0xA: #volume slide up
-							self.channels[channel].vol_slide_amount = step_effect_param
-						case 0xB: #volume slide down
-							self.channels[channel].vol_slide_amount = -step_effect_param
+					case 0xA: #volume slide up
+						self.channels[channel].vol_slide_amount = step_data.effect_param
+					case 0xB: #volume slide down
+						self.channels[channel].vol_slide_amount = -step_data.effect_param
 
-						case 0xC: #set volume
-							self.channels[channel].step_volume = step_effect_param
+					case 0xC: #set volume
+						self.channels[channel].step_volume = step_data.effect_param
 
-						case 0xD: #break pattern
-							self.skip = True
-							#the param is ignored here
+					case 0xD: #break pattern
+						self.skip = True
+						#the param is ignored here
 
-						case 0xF: #set speed
-							self.speed = [step_effect_param]*2
+					case 0xF: #set speed
+						self.speed = [step_data.effect_param]*2
 
 
 	def tick(self, buffer, debug=False, export=False):
@@ -934,3 +927,5 @@ class replayer():
 
 		self.channels[self.num_channels+fxch] = channel()
 		self.channels[self.num_channels+fxch].instrument_idx = 0
+
+		
