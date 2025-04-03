@@ -1,5 +1,5 @@
 from .gax_enums import (
-	step_type, perf_row_effect, step_effect
+	perf_row_effect, step_effect
 )
 from . import shinen_gax as gax
 
