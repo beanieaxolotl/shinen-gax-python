@@ -1,5 +1,4 @@
 from . import shinen_gax as gax
-import math
 import struct
 
 from .general import get_period, get_freq
@@ -481,7 +480,7 @@ class channel:
 			if not self.perf_list_end:
 				if cur_perf_row["note"] not in [0, None]:
 					try:
-						if self.perf_semitone != math.ceil(self.old_perf_semitone):
+						if cur_perf_row["wave_slot_id"] > 0:
 							self.wave_position = self.wave_params["start_position"]
 					except:
 						#do not attempt to read non-existant wave position
