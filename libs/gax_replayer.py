@@ -652,6 +652,7 @@ class channel:
 				self.perf_row_speed  = self.instrument_data.perf_list["perf_row_speed"]
 				self.perf_row_buffer = self.instrument_data.perf_list["perf_list_data"]
 				self.perf_row_timer  = 0
+				self.perf_row_volume = 255
 
 				self.is_fixed = False
 
