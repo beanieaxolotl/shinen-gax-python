@@ -452,6 +452,7 @@ class channel:
 					self.old_perf_semitone = self.perf_semitone
 					self.perf_semitone     = cur_perf_row["note"] - 4 # apply note correction
 					self.perf_pitch        = self.perf_semitone * 32  # set that as our perf pitch
+					self.is_fixed          = False
 				else:
 					self.old_perf_semitone = self.perf_semitone
 					self.perf_semitone     = cur_perf_row["note"] - 2
