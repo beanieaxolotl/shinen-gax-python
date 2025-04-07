@@ -56,10 +56,10 @@ class channel:
 		self.note_slide_amount      = 0
 		self.perf_note_slide_amount = 0
 
-		self.old_semitone             = 0 #to allow for pitch slides
-		self.target_semitone          = 0 
-		self.is_tone_porta            = False
-		self.tone_porta_lerp          = 0
+		self.old_semitone    = 0 #to allow for pitch slides
+		self.target_semitone = 0 
+		self.is_tone_porta   = False
+		self.tone_porta_lerp = 0
 
 		self.vol_slide_amount      = 0
 		self.perf_vol_slide_amount = 0
@@ -83,10 +83,10 @@ class channel:
 		self.wave_output    = 0
 
 		#modulator controls
-		self.modulate_size      = 0
-		self.modulate_step      = 0
-		self.modulate_speed     = 0
-		self.is_modulate        = False
+		self.modulate_size  = 0
+		self.modulate_step  = 0
+		self.modulate_speed = 0
+		self.is_modulate    = False
 
 		self.modulate_timer       = 0
 		self.modulate_position    = 0
