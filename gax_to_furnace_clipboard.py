@@ -30,16 +30,15 @@ def dump_step_data(step_cmd, transpose=0):
 				effect_str = '{:0>2}'.format(f'{step_cmd.effect_param:X}')
 				return effect_str
 			else:
-				effect_str = '{:0>2}'.format(f'{step_cmd.effect_type.value:X}')
+				if step_cmd.effect_type.value > 0:
+					effect_str = '{:0>2}'.format(f'{step_cmd.effect_type.value:X}')
+				elif step_cmd.effect_type.value == 0:
+					effect_str = '..'
 
-		if type(step_cmd.effect_type) == int:
-			effect_str = '{:0>2}'.format(f'{step_cmd.effect_type:X}')
-			unknown_effect = True
-
-		elif step_cmd.effect_type == None:
+		elif step_cmd.effect_type.value == 0:
 			effect_str = '..'
 
-		if step_cmd.effect_param != None:
+		if step_cmd.effect_param > 0:
 			effect_str += '{:0>2}'.format(f'{step_cmd.effect_param:X}')
 		else:
 			effect_str += '..'
@@ -48,7 +47,7 @@ def dump_step_data(step_cmd, transpose=0):
 
 	#we just uncompressed the rle data
 
-	if step_cmd.semitone == None: # effect only
+	if step_cmd.semitone == 0: # effect only
 
 		effect_str = dumpEffect(step_cmd)
 
@@ -57,12 +56,12 @@ def dump_step_data(step_cmd, transpose=0):
 		else:
 			return '.......{}|'.format(effect_str)
 
-	if step_cmd.effect_type == None and step_cmd.effect_param == None: #note only
+	if step_cmd.effect_type.value == 0 and step_cmd.effect_param == 0: #note only
 
-		if type(step_cmd.semitone) != gax.step_type:
-			return '{}{:0>2}......|'.format(gax.semitone_to_note(step_cmd.semitone+transpose), f'{step_cmd.instrument:X}')
+		if step_cmd.semitone > 1:
+			return '{}{:0>2}......|'.format(gax.semitone_to_note(step_cmd.semitone+transpose), f'{step_cmd.instrument-1:X}')
 
-		elif step_cmd.semitone.value == 1:
+		elif step_cmd.semitone == 1:
 
 			if step_cmd.instrument == 0:
 				return '===........|'

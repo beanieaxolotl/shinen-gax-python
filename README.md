@@ -10,7 +10,7 @@ This also works with .gax/.o files made with the NAX Sound Engine, which shares 
 
 - Waveform dumper - Allows one to dump waveform data from GAX files into .wav files.
 
-- Furnace clipboard converter - This converts the GAX pattern data in a .gax/.o file into the clipboard format used by tildearrow's [Furnace].
+- Furnace clipboard converter - This converts the GAX pattern data in a .gax file into the clipboard format used by tildearrow's [Furnace].
 
 - Header reconstructor - This decompiles/reconstructs a C/C++ header file (music.h) from the GAX music data in a Game Boy Advance ROM. This isn't really useful right now since there's no ELF object recompiler for either the music or FX data (yet).
 
