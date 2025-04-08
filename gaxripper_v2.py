@@ -160,7 +160,7 @@ song_settings = scan_ROM(gba_rom)
 print("\n Songs found |", str(len(song_settings)))
 
 print("> Unpacking from ROM")
-gax_object = gax.unpackGAXFromROM(song_settings, gba_rom)
+gax_object = gax.unpack_gax_from_rom(song_settings, gba_rom)
 print("> GAX data unpacked.\n")
 
 print("> Repacking into GAX binary blob format")

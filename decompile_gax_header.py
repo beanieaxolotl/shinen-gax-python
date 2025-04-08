@@ -137,14 +137,14 @@ gax_library = gax.get_GAX_library(gba_rom)
 song_settings = scan_ROM(gba_rom)
 
 print("> Unpacking from ROM")
-gax_object = gax.unpackGAXFromROM(song_settings, gba_rom)
+gax_object = gax.unpack_gax_from_rom(song_settings, gba_rom)
 print("> GAX data unpacked.\n")
 
 #recreate the input music.h file from the song bank
 print("> Reconstructing music.h")
 try:
 	g = open("music.h", "w")
-	g.write(gax.get_cppMusicHeader(gax_object, has_prefix = prefix))
+	g.write(gax.get_cpp_define_file(gax_object, has_prefix = prefix))
 	print("> music.h reconstructed")
 	g.close()
 except Exception as e:
