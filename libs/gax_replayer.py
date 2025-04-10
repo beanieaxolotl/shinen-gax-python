@@ -432,8 +432,7 @@ class channel:
 			if self.is_vibrato:
 				self.vibrato_subtimer += self.vibrato_speed
 				try:
-					# to do: this makes some songs sound more drunken than intended
-					self.vibrato_pitch = ((sine_table[self.vibrato_subtimer%64]) * self.vibrato_depth) >> 8
+					self.vibrato_pitch = ((sine_table[self.vibrato_subtimer%64]/127) * self.vibrato_depth)/3
 				except:
 					self.vibrato_pitch = 0
 
@@ -680,16 +679,18 @@ class channel:
 				vibrato_params = self.instrument_data.header['vibrato_params']
 
 				if (vibrato_params['vibrato_wait'] == 0 and vibrato_params['vibrato_depth'] == 0 and vibrato_params['vibrato_speed'] == 0):
-					self.use_vibrato   = False
-					self.is_vibrato    = False
-					self.vibrato_init  = 0
-					self.vibrato_depth = 0
-					self.vibrato_speed = 0
+					self.use_vibrato      = False
+					self.is_vibrato       = False
+					self.vibrato_init     = 0
+					self.vibrato_depth    = 0
+					self.vibrato_speed    = 0
+					self.vibrato_subtimer = 0
 				else:
-					self.use_vibrato   = True
-					self.vibrato_init  = vibrato_params['vibrato_wait']
-					self.vibrato_depth = vibrato_params['vibrato_depth']
-					self.vibrato_speed = vibrato_params['vibrato_speed']
+					self.use_vibrato      = True
+					self.vibrato_init     = vibrato_params['vibrato_wait']
+					self.vibrato_depth    = vibrato_params['vibrato_depth']
+					self.vibrato_speed    = vibrato_params['vibrato_speed']
+					self.vibrato_subtimer = 0
 
 					if vibrato_params['vibrato_wait'] == 0:
 						self.is_vibrato = True
