@@ -684,12 +684,13 @@ class channel:
 					self.vibrato_init     = 0
 					self.vibrato_depth    = 0
 					self.vibrato_speed    = 0
-					self.vibrato_subtimer = 0
 				else:
 					self.use_vibrato      = True
+					self.is_vibrato       = False
 					self.vibrato_init     = vibrato_params['vibrato_wait']
 					self.vibrato_depth    = vibrato_params['vibrato_depth']
 					self.vibrato_speed    = vibrato_params['vibrato_speed']
+					self.vibrato_timer    = 0
 					self.vibrato_subtimer = 0
 
 					if vibrato_params['vibrato_wait'] == 0:
