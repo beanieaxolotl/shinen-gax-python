@@ -432,7 +432,7 @@ class channel:
 			if self.is_vibrato:
 				self.vibrato_subtimer += self.vibrato_speed
 				try:
-					self.vibrato_pitch = ((sine_table[self.vibrato_subtimer%64]/127) * self.vibrato_depth)/3
+					self.vibrato_pitch = ((sine_table[self.vibrato_subtimer%64]) * self.vibrato_depth) >> 8
 				except:
 					self.vibrato_pitch = 0
 
