@@ -11,9 +11,8 @@ to do:
 
 > looping envelopes (100% accurate?)
 
-> vibrato support (33.3% accurate)
-	> depth (figure out proper scaling)
-	> speed / wait (accurate)
+> vibrato support (100% accurate)
+	> odd edge case in Shrek 2 - castle theme
 
 > wavetable modulation synthesis (100% done)
 	> slightly crackly backwards handling
@@ -56,10 +55,10 @@ class channel:
 		self.note_slide_amount      = 0
 		self.perf_note_slide_amount = 0
 
-		self.old_semitone             = 0 # to allow for pitch slides
-		self.target_semitone          = 0 
-		self.is_tone_porta            = False
-		self.tone_porta_lerp          = 0
+		self.old_semitone    = 0 # to allow for pitch slides
+		self.target_semitone = 0 
+		self.is_tone_porta   = False
+		self.tone_porta_lerp = 0
 
 		self.vol_slide_amount      = 0
 		self.perf_vol_slide_amount = 0
@@ -83,10 +82,10 @@ class channel:
 		self.wave_output    = 0
 
 		# modulator controls
-		self.modulate_size      = 0
-		self.modulate_step      = 0
-		self.modulate_speed     = 0
-		self.is_modulate        = False
+		self.modulate_size  = 0
+		self.modulate_step  = 0
+		self.modulate_speed = 0
+		self.is_modulate    = False
 
 		self.modulate_timer       = 0
 		self.modulate_position    = 0
@@ -104,9 +103,7 @@ class channel:
 		self.vibrato_init  = 0 # ticks to wait before applying
 		self.vibrato_depth = 0
 		self.vibrato_speed = 0
-
-		self.vibrato_pitch     = 0 # detune pitch to apply to the main pitch
-		self.vibrato_step_rate = 0 
+		self.vibrato_pitch = 0 # detune pitch to apply to the main pitch
 
 
 		# envelope controls
@@ -239,9 +236,6 @@ class channel:
 
 		self.output_buffer = list()
 
-		if self.use_vibrato and self.is_vibrato:
-			self.vibrato_step_rate = self.vibrato_pitch / (mix_rate/fps)		
-
 		if self.wave_params != None:
 
 			# determine loop outcome from loop points
@@ -262,28 +256,23 @@ class channel:
 
 				if not self.is_modulate:
 					self.wave_step_rate = (get_freq(get_period(
-										   (self.perf_semitone + (self.wave_params["finetune"]/32)) 
-										   + self.semitone)) / mix_rate) 
+										   (self.perf_semitone + (self.wave_params["finetune"]/32) 
+										   	+ self.vibrato_pitch) + self.semitone)) / mix_rate) 
 				else:
 					self.modulate_step_rate = (get_freq(get_period(
-										   (self.perf_semitone + (self.wave_params["finetune"]/32)) 
-										   + self.semitone)) / mix_rate) 
+										   (self.perf_semitone + (self.wave_params["finetune"]/32)
+										   	+ self.vibrato_pitch) + self.semitone)) / mix_rate) 
 
 			else:
 
 				if not self.is_modulate:
 					self.wave_step_rate = (get_freq(get_period(
 									   self.perf_semitone + (self.wave_params["finetune"]/32)
-									   ))) / mix_rate 
+									   + self.vibrato_pitch))) / mix_rate 
 				else:
 					self.modulate_step_rate = self.modulate_step + (get_freq(get_period(
 									   self.perf_semitone + (self.wave_params["finetune"]/32)
-									   ))) / mix_rate 
-
-			if not self.is_modulate:
-				self.wave_step_rate += self.vibrato_step_rate
-			else:
-				self.modulate_step_rate += self.vibrato_step_rate
+									   + self.vibrato_pitch))) / mix_rate 
 
 		else:
 
@@ -432,7 +421,7 @@ class channel:
 			if self.is_vibrato:
 				self.vibrato_subtimer += self.vibrato_speed
 				try:
-					self.vibrato_pitch = ((sine_table[self.vibrato_subtimer%64]) * self.vibrato_depth) >> 8
+					self.vibrato_pitch = ((sine_table[self.vibrato_subtimer%64]/127) * self.vibrato_depth)/64
 				except:
 					self.vibrato_pitch = 0
 
@@ -626,6 +615,9 @@ class channel:
 			self.is_tone_porta      = False
 			self.volenv_note_off    = False
 			self.volenv_turning_off = False
+
+			self.old_semitone = self.semitone
+			self.semitone     = semitone
 			
 			if instr_idx > 0:
 
@@ -640,20 +632,11 @@ class channel:
 				self.timer           = 0 # reset timer
 				self.instrument_data = instrument_set[instr_idx] # get the required data
 				self.is_active       = True # let the replayer know this channel is active
-				
-			self.old_semitone = self.semitone
-			self.semitone     = semitone
 
-
-			if instr_idx > 0:
-
-				self.use_vibrato       = False 
-				self.vibrato_step_rate = 0 # do not carry the vibrato from
-										   # one instrument to one that doesn't have vibrato	
-				self.note_slide_amount = 0
-
-				self.wave_direction = 1 # samples start playing forwards
-
+				self.use_vibrato            = False 
+				self.vibrato_pitch          = 0 # do not carry the vibrato from one instrument to one that doesn't have vibrato	
+				self.note_slide_amount      = 0
+				self.wave_direction         = 1 # samples start playing forwards
 				self.perf_note_slide_amount = 0 # reset the slide amount
 				
 				self.perf_semitone   = 0
@@ -679,11 +662,11 @@ class channel:
 				vibrato_params = self.instrument_data.header['vibrato_params']
 
 				if (vibrato_params['vibrato_wait'] == 0 and vibrato_params['vibrato_depth'] == 0 and vibrato_params['vibrato_speed'] == 0):
-					self.use_vibrato      = False
-					self.is_vibrato       = False
-					self.vibrato_init     = 0
-					self.vibrato_depth    = 0
-					self.vibrato_speed    = 0
+					self.use_vibrato   = False
+					self.is_vibrato    = False
+					self.vibrato_init  = 0
+					self.vibrato_depth = 0
+					self.vibrato_speed = 0
 				else:
 					self.use_vibrato      = True
 					self.is_vibrato       = False
