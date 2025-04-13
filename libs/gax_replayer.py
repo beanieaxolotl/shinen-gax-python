@@ -231,7 +231,6 @@ class channel:
 		current bugs:
 		> envelope pause timing / note off timing is inconsistent during speed modulation (cases - Jazz Jackrabbit, SpongeBob: Lights Camera Pants)
 		> envelope looping is one tick faster (case - Iridion II)
-		> vibrato depth calculation is inaccurate (cases - most games)
 		'''
 
 		self.output_buffer = list()
