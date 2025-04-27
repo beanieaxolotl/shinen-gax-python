@@ -26,6 +26,8 @@ This also works with .gax/.o files made with the NAX Sound Engine, which shares 
 - A tracker / sound editor for the GAX format implemented with pygame-ce, pyaudio and MyreMylar's [pygame_gui]
 - An accurate replayer engine for the GAX format, allowing for high-quality listening to tracks. GAX playback on the GBA is used as reference to gauge accuracy. There are a few bugs regarding accuracy, but most tracks that I have tried play close to perfect, albeit with a few minor audio bugs here and there.
 
+## Requirements:
+- PyAudio - used for the GAX song rendering and audio output. You can find PyAudio here at this [link].
 
 Credits:
 ==============
@@ -39,5 +41,6 @@ nikku4211 - [Additional documentation] of GAX's sequence data format (used as a 
 [gax sound engine]: <https://www.shinen.com/music/music.php3?gax>
 [documentation]: <https://gist.github.com/loveemu/9b3063ffd9a76cb18e379324e43f3251>
 [additional documentation]: <https://gist.github.com/loveemu/9b3063ffd9a76cb18e379324e43f3251?permalink_comment_id=3504799#gistcomment-3504799>
+[link]: <https://people.csail.mit.edu/hubert/pyaudio/>
 [furnace]: <https://github.com/tildearrow/furnace>
 [pygame_gui]:<https://github.com/MyreMylar/pygame_gui>
