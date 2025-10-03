@@ -35,9 +35,7 @@ class gax_replayer:
 		self.min_version = 5
 
 		self.stream = self.p.open(format=pyaudio.paInt8,
-				channels=1,
-				rate=self.mixing_rate,
-		output=True)	
+		channels=1, rate=self.mixing_rate, output=True)	
 
 
 	## useful functions
@@ -72,6 +70,17 @@ class gax_replayer:
 				gain=self.gain,
 				major_version=self.maj_version,
 				minor_version=self.min_version)
+
+		if self.vars.num_fx_channels:
+			for ch in range(self.vars.num_channels, 
+				self.vars.num_channels+self.vars.num_fx_channels):
+				self.vars.channels[ch].tick(ch,self.vars,
+					self.vars.fx_data.instrument_set, 
+					self.vars.fx_data.wave_set.wave_bank, 
+					self.stream, self.mixing_rate, self.fps,
+					gain=self.gain,
+					major_version=self.maj_version,
+					minor_version=self.min_version)
 		try:
 			if not debug:
 				self.vars.tick(self.stream)
@@ -82,24 +91,51 @@ class gax_replayer:
 
 	## GAX_stop
 	## GAX2_new_fx
-	## GAX2_fx
+		
+	def GAX_fx(self, fxid):
+
+		#self.vars.play_sound(fxch=fxch, fx_idx=fxid)
+		#self.GAX_fx_note(fxch, note)
+
+		curfxch = 0
+		prio1   = 0
+		prio2   = -1
+
+		if fxid < 256:
+			for i in range(self.vars.num_channels):
+				prio1 = self.vars.channels[self.vars.num_channels+fxch].priority
+				if prio1 <= prio2:
+					curfxch = i
+					prio2   = prio1
+
+			self.vars.play_sound(fxch=fxch, fx_idx=fxid)
+			self.vars.channels[self.vars.num_channels+fxch].priority = 0
+		else:
+			raise Exception('Playback of speech is not supported')
+
+		return curfxch
+
 
 	def GAX_fx_note(self, fxch, note=0):
-		self.vars.channels[self.vars.num_channels+fxch].semitone = note/32
+		if (note < 3821 and fxch > -1 
+			and fxch < self.fxch_count):
+			if self.vars.channels[self.vars.num_channels+fxch].instrument_idx:
+				self.vars.channels[self.vars.num_channels+fxch].semitone = note/32
+				self.vars.channels[self.vars.num_channels+fxch].is_fixed = False
 
 	def GAX_fx_ex(self, fxid, fxch, prio=0, note=0):
 		self.vars.play_sound(fxch=fxch, fx_idx=fxid)
-		self.GAX_fx_note(fxch, note)	
+		self.GAX_fx_note(fxch, note)
 
 	def GAX_fx_status(self, fxch):
 		return self.vars.channels[self.vars.num_channels+fxch].instrument_idx
 
 	def GAX_stop_fx(self, fxch):
 		if fxch != -1:
-			self.vars.stop_sound(fxch)
-		else:
 			for i in range(self.vars.num_fx_channels):
 				self.vars.stop_sound(i)
+		elif (fxch < self.vars.num_fx_channels and fxch >= 0):
+			self.vars.stop_sound(fxch)
 
 	## GAX_backup_fx
 	## GAX_restore_fx
@@ -110,11 +146,11 @@ class gax_replayer:
 		if corrected_vol > 1.0:
 			corrected_vol = 1
 
-		if ch != -1:
-			self.vars.channels[ch].mix_volume = corrected_vol
-		else:
+		if ch == -1:
 			for i in range(self.vars.num_channels):
 				self.vars.channels[i].mix_volume = corrected_vol
+		else:
+			self.vars.channels[ch].mix_volume = corrected_vol
 
 	def GAX_set_fx_volume(self, fxch, vol):
 
@@ -122,11 +158,11 @@ class gax_replayer:
 		if corrected_vol > 1.0:
 			corrected_vol = 1
 
-		if fxch != -1:
-			self.vars.channels[self.vars.num_channels+fxch].mix_volume = corrected_vol
-		else:
+		if fxch == -1:
 			for i in range(self.vars.num_fx_channels):
 				self.vars.channels[self.vars.num_channels+i].mix_volume = corrected_vol
+		elif (fxch > -2 and fxch < self.vars.num_fx_channels):
+			self.vars.channels[self.vars.num_channels+fxch].mix_volume = corrected_vol
 
 	## GAX_pause
 	## GAX_pause_music

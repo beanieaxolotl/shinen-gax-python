@@ -131,6 +131,9 @@ class channel:
 		# is the channel active or not
 		self.is_active = False # set to false if an envelope finishes
 
+		# fx variables
+		self.priority = -1
+
 		self.output_buffer = list()
 
 
@@ -145,7 +148,6 @@ class channel:
 
 	def tick_volenv(self):
 
-		# to do: Iridion II - Instrument #40's volume envelope is slightly faster than GAX playback
 
 		if len(self.volenv_buffer) > 1: # only read in volenv if there is any data
 
@@ -156,7 +158,11 @@ class channel:
 			else:
 				self.volenv_loop = False
 
-			if self.timer == self.volenv_buffer[self.volenv_idx][0]:
+			# shifts the envelope over 1 tick forward.
+			# this fixes envelope sidechains in Iridion II / 3D and Jackie Chan Adventures
+			kludge = 1 if self.volenv_idx else 0
+
+			if self.timer == self.volenv_buffer[self.volenv_idx][0] + kludge:
 				self.volenv_has_looped = False
 					  
 				# if our timer matches the current envelope point's time (X),
@@ -177,7 +183,8 @@ class channel:
 					if self.volenv_idx > self.instrument_data.volume_envelope["loop_end"]:
 						self.volenv_idx = self.instrument_data.volume_envelope["loop_start"]
 						self.timer = self.volenv_buffer[self.volenv_idx][0] # extremely shit solution but it works
-						self.volenv_has_looped = True
+						self.volenv_has_looped = True		
+
 
 		else:
 			# no volume envelope here
@@ -230,7 +237,6 @@ class channel:
 		'''
 		current bugs:
 		> envelope pause timing / note off timing is inconsistent during speed modulation (cases - Jazz Jackrabbit, SpongeBob: Lights Camera Pants)
-		> envelope looping is one tick faster (case - Iridion II)
 		'''
 
 		self.output_buffer = list()
@@ -276,7 +282,7 @@ class channel:
 		else:
 
 			# no wave param handler
-			# (case: Action Man: Robot Atak, Iridion 2 (theoretical))
+			# case: Action Man: Robot Atak
 
 			play_once        = True
 			is_invalid_loop  = False
@@ -438,7 +444,7 @@ class channel:
 				if reset_volume: # emulates GAX v3.05
 					self.perf_row_volume = 255
 
-				# else this emulates GAX v3.03a.
+				# else this emulates GAX v3.03a and lower.
 
 				# old_perf_semitone and perf_pitch are called twice.
 				# i don't know if this is ideal, but optimizing this
@@ -505,16 +511,13 @@ class channel:
 					self.perf_row_idx = fx_column[1]
 					self.perf_list_end = False
 
-				# <untested>
-				# it is unknown if this even works as intended
+				# to do: jump delay crashes the entire replayer ._.
 
 				if fx_column[0] == gax.perf_row_effect.jump_delay:
 					if self.perf_row_delay == 0:
 						self.perf_row_idx = fx_column[1]
 					else:
 						self.perf_row_delay -= 1
-
-				# </untested>
 
 				if fx_column[0] == gax.perf_row_effect.volume_slide_up:
 					self.perf_vol_slide_amount = fx_column[1]
@@ -531,7 +534,7 @@ class channel:
 
 		# slide functions
 		self.perf_pitch      += self.perf_note_slide_amount  # the pitch of the note (affected by perf list porta effects)
-		self.perf_semitone   = self.perf_pitch / 32          # the "normalized" semitone
+		self.perf_semitone    = self.perf_pitch / 32         # the "normalized" semitone
 		self.perf_row_volume += self.perf_vol_slide_amount
 
 

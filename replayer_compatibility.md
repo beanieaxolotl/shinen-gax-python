@@ -6,7 +6,7 @@
 |Note off                        |95% - Note offs are affected by speed modulation when they shouldn't be            |
 |Wave parameters                 |98% - There are a few edge cases that prevent this from being fully accurate       |
 |Vibrato                         |100%                                                                               |
-|Perf list handling              |98% - Perf list delay is untested                                                  |
+|Perf list handling              |98% - Perf list delay is broken                                                    |
 |Waveform modulation             |100%                                                                               |
 
 
@@ -14,7 +14,7 @@
 |Feature                         |Accuracy                                                    |
 |--------------------------------|------------------------------------------------------------|
 |Basic volume envelope handling  |100%                                                        |
-|Envelope looping                |50%  - Speed is inaccurate                                  |
+|Envelope looping                |100%  - Additional testing may be needed                    |
 |Envelope sustain                |100%                                                        |
 |Envelope sustain + looping      |100%                                                        |
 
@@ -27,7 +27,7 @@
 |0x01     |Portamento up                   |100%                                     |
 |0x02     |Portamento down                 |100%                                     |
 |0x05     |Jump to given perf. row         |100%                                     |
-|0x06     |Delay row jump                  |Untested                                 |
+|0x06     |Delay row jump                  |Currently crashes replayer               |
 |0x0A     |Volume slide up                 |100%                                     |
 |0x0B     |Volume slide down               |100%                                     |
 |0x0C     |Set volume                      |100%                                     |
