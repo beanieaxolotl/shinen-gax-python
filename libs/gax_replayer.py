@@ -511,7 +511,7 @@ class channel:
 					self.perf_row_idx = fx_column[1]
 					self.perf_list_end = False
 
-				# to do: jump delay crashes the entire replayer ._.
+				# to do: jump delay does nothing.
 
 				if fx_column[0] == gax.perf_row_effect.jump_delay:
 					if self.perf_row_delay == 0:
