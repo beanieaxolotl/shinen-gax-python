@@ -10,7 +10,7 @@ parser.add_argument('--idx', default=0, type=int, help="Song to print clipboard 
 
 
 args = parser.parse_args()
-#Path and file name of the file
+# path and file name of the file
 gax_path = os.path.realpath(args.path)
 file_name = os.path.basename(gax_path)
 
@@ -45,7 +45,7 @@ def dump_step_data(step_cmd, transpose=0):
 
 		return effect_str
 
-	#we just uncompressed the rle data
+	# we just uncompressed the rle data
 
 	if step_cmd.semitone == 0: # effect only
 
@@ -56,7 +56,7 @@ def dump_step_data(step_cmd, transpose=0):
 		else:
 			return '.......{}|'.format(effect_str)
 
-	if step_cmd.effect_type.value == 0 and step_cmd.effect_param == 0: #note only
+	if step_cmd.effect_type.value == 0 and step_cmd.effect_param == 0: # note only
 
 		if step_cmd.semitone > 1:
 			return '{}{:0>2}......|'.format(gax.semitone_to_note(step_cmd.semitone+transpose), f'{step_cmd.instrument-1:X}')
@@ -76,7 +76,7 @@ def dump_step_data(step_cmd, transpose=0):
 		# note + effect
 
 		if step_cmd.effect_type == gax.step_effect.set_volume:
-			#furnace has no set volume commands as there is already a volume column that is used for that
+			# furnace has no set volume commands as there is already a volume column that is used for that
 			return "{}{:0>2}{}....|".format(gax.semitone_to_note(step_cmd.semitone+transpose), f'{step_cmd.instrument:X}', effect_str)
 		else:
 			return "{}{:0>2}..{}|".format(gax.semitone_to_note(step_cmd.semitone+transpose), f'{step_cmd.instrument:X}', effect_str)

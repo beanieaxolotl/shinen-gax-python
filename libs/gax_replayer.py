@@ -832,7 +832,7 @@ class replayer():
 						self.speed = [step_data.effect_param]*2
 
 
-	def tick(self, buffer, debug=False, export=False):
+	def tick(self, buffer, debug=False, export=False, _16bit=False):
 
 		self.timer += 1
 
@@ -885,7 +885,14 @@ class replayer():
 				except:
 					pass
 
-		mix_buffer = bytes((x & 0xff for x in (list(clamp(-128, 127, round(i)) for i in mix_buffer))))
+		if _16bit:
+			mix_buffer = b"".join(i.to_bytes(2, byteorder='little') 
+				for i in ((x & 0xffff for x in (
+					list(clamp(-32768, 32767, round(i*256)) for i in mix_buffer))
+				)))
+		else:
+			mix_buffer = bytes((x & 0xff for x in (list(clamp(-128, 127, round(i)) for i in mix_buffer))))
+
 		self.output_buffer = list(x for x in mix_buffer)
 
 		if not export:

@@ -10,11 +10,8 @@ import argparse
 
 ## vars ##
 
-fps = 59.7275
-max_loops = 2
+fps           = 59.7275
 output_buffer = b''
-
-hqx_render = True
 
 
 ## funcs ##
@@ -42,24 +39,26 @@ def setup_GAX(mus_path):
 ## main ##
 
 parser = argparse.ArgumentParser()
-parser.add_argument('file_path', help=".gax/.o file to load")
+parser.add_argument('file_path', help="GAX .gax/.o file to load")
 parser.add_argument('--idx', default=0, type=int, help="Song in file to load")
-parser.add_argument('--loops', default=1, type=int, help="Number of times to repeat the song. Does nothing on one-shot jingles")
-parser.add_argument('--hqx', default=False, type=bool, help="Whenever or not to render the specified track at 48khz")
+parser.add_argument('--loops', default=2, type=int, help="Number of times to repeat the song. Does nothing on one-shot jingles")
+parser.add_argument('--hqx', default=False, type=bool, help="To render the specified track at 48khz")
+parser.add_argument('--word', default=True, type=bool, help="To render the specified track with 16-bit bit depth. This is enabled by default")
 parser.add_argument('--maj', default=3, type=int, help="The major version of GAX to emulate")
 parser.add_argument('--min', default=5, type=int, help="The minor version of GAX to emulate")
 
-args = parser.parse_args()
+args       = parser.parse_args()
 music_path = os.path.realpath(args.file_path)
-music_idx = args.idx
+music_idx  = args.idx
 hqx_render = args.hqx
-max_loops = args.loops
-
+max_loops  = args.loops
+use_16bit  = args.word
 
 if hqx_render:
 	mixing_rate = 48000
 else:
 	mixing_rate = 0
+
 
 # create output folder
 output_path = str(os.getcwd())+"\\song_export\\"
@@ -70,7 +69,13 @@ except:
 
 
 setup_GAX(music_path)
-replayer = gax_replayer(gax_obj, None, music_idx, mixing_rate, fps)
+replayer = gax_replayer(gax_obj, 
+						None, 
+						music_idx, 
+						mixing_rate, 
+						fps,
+						_16bit = use_16bit)
+
 replayer.maj_version = args.maj
 replayer.min_version = args.min
 
@@ -80,7 +85,7 @@ wave_name = "{:0>2X} ~ {} ({} khz).wav".format(
 	int(replayer.mixing_rate/1000))
 
 print('Filename of output: {}\nOutput path: {}'.format(wave_name, output_path))
-
+print('Please wait...')
 while replayer.vars.speed[0] != 0: 
 
 	#luckily there is a way to know when the GAX song stops
@@ -90,8 +95,16 @@ while replayer.vars.speed[0] != 0:
 	if replayer.vars.loop_count >= max_loops+1:
 		break
 
+
 with wave.open(output_path + wave_name, mode="wb") as wav_file:
-	wav_file.setnchannels(1)
-	wav_file.setsampwidth(1)
-	wav_file.setframerate(replayer.mixing_rate)
-	wav_file.writeframes(sign_flip(output_buffer))
+
+	if use_16bit:
+		wav_file.setnchannels(1)
+		wav_file.setsampwidth(2)
+		wav_file.setframerate(replayer.mixing_rate)
+		wav_file.writeframes(output_buffer)
+	else:
+		wav_file.setnchannels(1)
+		wav_file.setsampwidth(1)
+		wav_file.setframerate(replayer.mixing_rate)
+		wav_file.writeframes(sign_flip(output_buffer))

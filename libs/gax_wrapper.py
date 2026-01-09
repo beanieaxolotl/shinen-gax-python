@@ -3,23 +3,23 @@ from .gax_replayer import channel, replayer
 from .calc_mem     import get_ram_usage
 import pyaudio
 
-#mimicks the GAX Sound Engine's playback functions as close as possible
+#mimics the GAX Sound Engine's playback functions as close as possible
 
 
 class gax_replayer:
 
 	def __init__(self, gax_mus_object, gax_fx_object = None, 
-		song_index = 0, mixrate_override = 0, fps = 60):
+		song_index = 0, mixrate_override = 0, fps = 60, _16bit = False):
 
-		self.p = pyaudio.PyAudio()
-
+		self.p           = pyaudio.PyAudio()
+		self.is_16bit    = _16bit
 		self.module_data = gax_mus_object
 
 		if gax_fx_object is not None:
 			self.vars = replayer(self.module_data, song_idx=song_index, 
-			allocate_fxch=True, fx_obj=gax_fx_object) #default: grab song #0
+			allocate_fxch=True, fx_obj=gax_fx_object) # default: grab song #0
 		else:
-			self.vars = replayer(self.module_data, song_idx=song_index) #default: grab song #0
+			self.vars = replayer(self.module_data, song_idx=song_index) # default: grab song #0
 		
 		if mixrate_override > 0:
 			self.mixing_rate = mixrate_override
@@ -34,8 +34,12 @@ class gax_replayer:
 		self.maj_version = 3
 		self.min_version = 5
 
-		self.stream = self.p.open(format=pyaudio.paInt8,
-		channels=1, rate=self.mixing_rate, output=True)	
+		if self.is_16bit:
+			self.stream = self.p.open(format=pyaudio.paInt16,
+			channels=1, rate=self.mixing_rate, output=True)	
+		else:
+			self.stream = self.p.open(format=pyaudio.paInt8,
+			channels=1, rate=self.mixing_rate, output=True)	
 
 
 	## useful functions
@@ -66,10 +70,13 @@ class gax_replayer:
 			self.vars.channels[ch].tick(ch,self.vars,
 				self.module_data.instrument_set, 
 				self.module_data.wave_set.wave_bank, 
-				self.stream, self.mixing_rate, self.fps,
+				self.stream, 
+				self.mixing_rate, 
+				self.fps,
 				gain=self.gain,
 				major_version=self.maj_version,
-				minor_version=self.min_version)
+				minor_version=self.min_version
+				)
 
 		if self.vars.num_fx_channels:
 			for ch in range(self.vars.num_channels, 
@@ -77,15 +84,27 @@ class gax_replayer:
 				self.vars.channels[ch].tick(ch,self.vars,
 					self.vars.fx_data.instrument_set, 
 					self.vars.fx_data.wave_set.wave_bank, 
-					self.stream, self.mixing_rate, self.fps,
+					self.stream, 
+					self.mixing_rate, 
+					self.fps,
 					gain=self.gain,
 					major_version=self.maj_version,
-					minor_version=self.min_version)
+					minor_version=self.min_version
+					)
+				
 		try:
 			if not debug:
-				self.vars.tick(self.stream)
+				self.vars.tick(
+					self.stream, 
+					_16bit=self.is_16bit
+					)
 			else:
-				return self.vars.tick(self.stream, debug=debug)
+				return self.vars.tick(
+					self.stream, 
+					debug=debug, 
+					_16bit=self.is_16bit
+					)
+
 		except OSError as e:
 			raise Exception('Audio output error')
 
@@ -111,7 +130,7 @@ class gax_replayer:
 			self.vars.play_sound(fxch=fxch, fx_idx=fxid)
 			self.vars.channels[self.vars.num_channels+fxch].priority = 0
 		else:
-			raise Exception('Playback of speech is not supported')
+			raise Exception('Unknown FX index')
 
 		return curfxch
 

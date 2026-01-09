@@ -8,18 +8,18 @@ parser = argparse.ArgumentParser()
 parser.add_argument('file_path', help="GAX .gax/.o file")
 
 args = parser.parse_args()
-#Path and file name of the file
+# path and file name of the file
 gax_path = os.path.realpath(args.file_path)
 file_name = os.path.basename(gax_path)
 
 with open(gax_path, "rb") as f:
 
-	#create output folder
+	# create output folder
 	output_path = str(os.getcwd())+"\\waveform_dumps\\" + file_name + " (waveforms)""\\"
 	try:
 		os.makedirs(output_path)
 	except:
-		pass #path already exists
+		pass # path already exists
 
 	gax_file = f.read()
 	gax_obj = gax.unpack_GAX_file(gax_file)
@@ -43,4 +43,4 @@ with open(gax_path, "rb") as f:
 		
 		idx += 1
 
-	print("\nall waveforms saved!")
+	print("\nall waveforms saved")
